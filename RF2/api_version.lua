@@ -12,7 +12,7 @@ local function processMspReply(cmd,rx_buf,err)
 end
 
 local function getApiVersion()
-    if lastRunTS == 0 or lastRunTS + INTERVAL < getTime() then
+    if not apiVersionReceived and (lastRunTS == 0 or lastRunTS + INTERVAL < getTime()) then
         protocol.mspRead(MSP_API_VERSION)
         lastRunTS = getTime()
     end
