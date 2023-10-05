@@ -11,7 +11,7 @@ local inc = { x = function(val) x = x + val return x end, y = function(val) y = 
 local labels = {}
 local fields = {}
 
-local channels = { [0] = 
+local channels = { [0] =
     "OFF", "R",    "P",    "RP",
     "Y",   "RY",   "PY",   "RPY",
     "T",   "RT",   "PT",   "RPT",

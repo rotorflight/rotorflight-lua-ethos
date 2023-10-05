@@ -40,5 +40,5 @@ return {
             destPidProfile = self.currentPidProfile - 1
         end
         return destPidProfile
-    end, 
+    end,
 }

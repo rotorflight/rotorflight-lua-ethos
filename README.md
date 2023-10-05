@@ -1,63 +1,63 @@
-# Rotorflight Lua Scripts for OpenTX and EdgeTX
+# Rotorflight Lua Scripts for Ethos
 
-**Rotorflight** is a _Flight Control_/_FBL_ Software Suite for traditional single-rotor RC helicopters. It is based on Betaflight 4.2, enjoying all the great features of the Betaflight platform, plus many new features added for helicopters. Rotorflight borrows ideas and code also from Heliflight3D, an earlier fork of Betaflight for helicopters.
+*Rotorflight* is a _Flight Control_/_FBL_ Software Suite for traditional single-rotor RC helicopters. It is based on Betaflight, enjoying all the great features of the Betaflight platform, plus many new features added for helicopters.
 
-**Rotorflight Lua Scripts** is a package of OpenTX/EdgeTX Lua scripts for accessing and configuring the Rotorflight FC from the transmitter.
-
-Rotorflight does **NOT** support multi-rotor 'drones', nor airplanes; it is only for traditinal RC helicopters, including co-axial and tandem helicopters.
-
+*Rotorflight Lua Scripts* is a package of Ethos Lua scripts for configuring the Rotorflight flightcontroller from the transmitter.
 
 ## Requirements
 
-- OpenTX 2.3.12 or EdgeTX 2.5.0 or later transmitter firmware
-- A receiver supporting remote configuration:
-  - a FrSky Smartport or F.Port receiver, _or_
-  - a Crossfire v2.11 or newer receiver, _or_
-  - an ELRS 2.0.1 or newer receiver
+- Ethos 1.1.0 or later
+- an X10, X12, X18, X20 or Twin X Lite transmitter
+- a FrSky Smartport or F.Port receiver using ACCESS, ACCST, TD or TW mode
+
+## Tested Receivers
+
+The following receivers were correctly working with an X18 or X20 transmitter.
+- TD MX 1.0.10
+- R9 MX ACCESS 1.3.2
+- R9 Mini ACCESS 1.3.1
+- Archer RS ACCESS 2.1.10
+- RX6R ACCESS 2.1.8
+- R-XSR ACCESS 2.1.8
+- R-XSR ACCST FCC F.port 2.1.0
+- Archer Plus RS and Archer Plus RS Mini ACCESS F.Port 1.0.5
+
+Note: when saving changes fails, the scripts will automatically retry. The R-XSR and the Archer Plus RS (Mini) seem to retry regularly, while the other receivers rarely do this.
 
 ## Installation
 
-Please download the latest version from github:
+Download the latest files (click *Code* and then *Download ZIP*) and copy the `RF` folder to the `scripts` folder on your transmitter. You will know if you did this correctly if the *Rotorflight* tool shows up on the Ethos system menu.
 
- - https://github.com/rotorflight/rotorflight-lua-scripts/releases
-
-and copy the contents of the SCRIPTS folder to your transmitter.
-
-You will know if you did this correctly if the `rf.lua` file shows up in the `/SCRIPTS/TOOLS` directory. Also *Rotorflight conf* should now show up in the *Tools* menu of your transmitter.
-
-### Copying the SCRIPTS folder
+### Copying the RF folder
 
 USB Method
 
-1. Connect your transmitter to a computer with an USB cable.
-2. Open the new drive on your computer.
-3. Unzip the file and copy the SCRIPTS folder to the root the new drive.
-4. Eject the drive.
-5. Unplug the USB cable.
+1. Power on your transmitter.
+2. Connect your transmitter to a computer with an USB cable.
+3. Select *Ethos Suite* on the transmitter.
+4. Open the new drive on your computer.
+5. Unzip the file and copy the RF folder to the scripts folder on the SDCARD drive.
+6. Eject the drive.
+7. Unplug the USB cable.
+8. Turn off the transmitter and re-power it.
 
 SD Card Method
 
 1. Power off your transmitter.
 2. Remove the SD card and plug it into a computer.
-3. Unzip the file and copy the SCRIPTS folder to the root of the SD card.
+3. Unzip the file and copy the RF folder to the scripts folder on the SDCARD drive.
 4. Eject the SD card.
 5. Reinsert your SD card into the transmitter.
 6. Power up your transmitter.
 
-If you copied the files correctly, you can now go into the *Tools* menu on your transmitter and access the Rotorflight Configuration tool. The first time you run the script, a message 'Compiling...' will appear in the display before the script is started. This is normal and is done to minimise the RAM usage of the script.
-
 ## Usage
+
 See the [Lua Scripts Wiki page](https://github.com/rotorflight/rotorflight/wiki/Lua-Scripts).
 
-## Background script
-The optional background script offers RTC synchronization and RSSI through MSP. RTC synchronization will send the time of the transmitter to the flight controller. The script will beep if RTC synchronization has been completed. Blackbox logs and files created by the FC will now have the correct timestamp.
+## Credits
 
-The background script can be setup as a special or global function in OpenTX. The image below shows how to configure the background script as a special function. By doing this, the script will automatically run as soon as the model is selected.
-
-![Background script setup](docs/assets/images/background_script_setup.png)
-
-## Building from source on Linux
-
-- Be sure to have `make` and `luac` in version 5.2 installed in the path.
-- Run `make` from the root folder.
-- The installation files will be created in the `obj` folder. Copy the files to your transmitter as instructed in the [Installation](#installation) section as if you unzipped from a downloaded file.
+Thanks go out to everyone who contributed along the way, especially the Betaflight and Rotorflight teams and the following Ethos users:
+- **Bender** - testing and suggestions
+- **egon** - Lua script maintainer
+- **James-T1** - author of the first Lua scripts for Ethos
+- **rob.thomson** - providing hardware, testing and suggestions

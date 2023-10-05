@@ -64,7 +64,7 @@ return {
         end
     end,
     updateRatesType = function(self, applyDefaults)
-        local ratesTable = assert(loadScript("RATETABLES/"..self.getRatesType(self)..".lua"))()
+        local ratesTable = assert(loadScript("/scripts/RF/RATETABLES/"..self.getRatesType(self)..".lua"))()
         for i = 1, #ratesTable.labels do
             self.labels[i].t = ratesTable.labels[i]
         end
@@ -78,7 +78,7 @@ return {
                 local f = self.fields[i]
                 f.value = ratesTable.defaults[i]
                 for idx=1, #f.vals do
-                    self.values[f.vals[idx]] = bit32.rshift(math.floor(f.value*(f.scale or 1) + 0.5), (idx-1)*8)
+                    self.values[f.vals[idx]] = math.floor(f.value*(f.scale or 1) + 0.5)>>((idx-1)*8)
                 end
             end
         else
@@ -87,8 +87,8 @@ return {
                 f.value = 0
                 for idx=1, #f.vals do
                     local raw_val = self.values[f.vals[idx]] or 0
-                    raw_val = bit32.lshift(raw_val, (idx-1)*8)
-                    f.value = bit32.bor(f.value, raw_val)
+                    raw_val = raw_val<<((idx-1)*8)
+                    f.value = f.value|raw_val
                 end
                 f.value = f.value/(f.scale or 1)
             end
@@ -97,5 +97,5 @@ return {
     end,
     postLoad = function(self)
         self.updateRatesType(self)
-    end,     
+    end,
 }
