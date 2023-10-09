@@ -15,9 +15,6 @@ jobs:
     - name: Check out repository
       uses: actions/checkout@v3
 
-    - name: Install Lua compiler
-      run: sudo apt-get -y install lua5.2
-
     - name: Set build variables
       run: |
         echo "GIT_VER=${GITHUB_REF##*/}" >> ${GITHUB_ENV}
@@ -25,7 +22,7 @@ jobs:
         cat ${GITHUB_ENV}
 
     - name: Make snapshot package
-      run: make package ZIPFILE="rotorflight-lua-scripts-snapshot-${{ env.GIT_VER }}.zip"
+      run: zip -q -r "rotorflight-lua-scripts-${{ env.GIT_VER }}.zip" RF*
 
     - name: Create Snapshot
       run: |
