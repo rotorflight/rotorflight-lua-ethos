@@ -22,7 +22,7 @@ jobs:
         cat ${GITHUB_ENV}
 
     - name: Make snapshot package
-      run: zip -q -r "rotorflight-lua-scripts-${{ env.GIT_VER }}.zip" RF*
+      run: zip -q -r "rotorflight-lua-ethos-${{ env.GIT_VER }}.zip" RF*
 
     - name: Create Snapshot
       run: |
