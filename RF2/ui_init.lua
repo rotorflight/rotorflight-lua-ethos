@@ -1,7 +1,7 @@
 local apiVersionReceived = false
 local getApiVersion, f
 local returnTable = { f = nil, t = "" }
-local SUPPORTED_API_VERSION = "11.02"
+local SUPPORTED_API_VERSION = "12.01"
 
 local function init()
     --if true then return true end
