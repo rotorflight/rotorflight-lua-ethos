@@ -1,4 +1,5 @@
 -- RotorFlight + ETHOS LUA configuration
+local LUA_VERSION = "2.0 - 231015"
 
 apiVersion = 0
 
@@ -61,8 +62,6 @@ local EVT_VIRTUAL_ENTER_LONG = 129
 local EVT_VIRTUAL_EXIT = 97
 local EVT_VIRTUAL_PREV = 99
 local EVT_VIRTUAL_NEXT = 98
-
-local LUA_VERSION = "2.0.0-230925"
 
 protocol = nil
 radio = nil
