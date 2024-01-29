@@ -332,6 +332,19 @@ end
 local function create()
     sensor = sport.getSensor({primId=0x32})
     rssiSensor = system.getSource("RSSI")
+    if not rssiSensor then
+        rssiSensor = system.getSource("RSSI 2.4G")
+        if not rssiSensor then
+            rssiSensor = system.getSource("RSSI 900M")
+            if not rssiSensor then
+                rssiSensor = system.getSource("Rx RSSI1")
+                if not rssiSensor then
+                    rssiSensor = system.getSource("Rx RSSI2")
+                end
+            end
+        end
+    end
+
     --sensor:idle(false)
 
     protocol = assert(loadScript("/scripts/RF2/protocols.lua"))()
