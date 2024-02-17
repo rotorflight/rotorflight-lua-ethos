@@ -1,7 +1,7 @@
 local apiVersionReceived = false
 local getApiVersion, f
 local returnTable = { f = nil, t = "" }
-local SUPPORTED_API_VERSION = "12.04" -- see main/msp/msp_protocol.h
+local SUPPORTED_API_VERSION = "12.05" -- see main/msp/msp_protocol.h
 
 local function init()
     --if true then return true end
