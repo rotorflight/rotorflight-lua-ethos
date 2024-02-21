@@ -67,6 +67,8 @@ protocol = nil
 radio = nil
 sensor = nil
 
+globals = {}
+
 local function saveSettings()
     if Page.values then
         local payload = Page.values
@@ -126,6 +128,27 @@ local function confirm(page)
     collectgarbage()
 end
 
+function dataBindFields()
+    for i=1,#Page.fields do
+        if #Page.values >= Page.minBytes then
+            local f = Page.fields[i]
+            if f.vals then
+                f.value = 0
+                for idx=1, #f.vals do
+                    local raw_val = Page.values[f.vals[idx]] or 0
+                    raw_val = raw_val<<((idx-1)*8)
+                    f.value = f.value|raw_val
+                end
+                local bits = #f.vals * 8
+                if f.min and f.min < 0 and (f.value & (1 << (bits - 1)) ~= 0) then
+                    f.value = f.value - (2 ^ bits)
+                end
+                f.value = f.value/(f.scale or 1)
+            end
+        end
+    end
+end
+
 -- Run lcd.invalidate() if anything actionable comes back from it.
 local function processMspReply(cmd,rx_buf,err)
     if Page and rx_buf ~= nil then
@@ -155,24 +178,7 @@ local function processMspReply(cmd,rx_buf,err)
         if Page.postRead then
             Page.postRead(Page)
         end
-        for i=1,#Page.fields do
-            if #Page.values >= Page.minBytes then
-                local f = Page.fields[i]
-                if f.vals then
-                    f.value = 0
-                    for idx=1, #f.vals do
-                        local raw_val = Page.values[f.vals[idx]] or 0
-                        raw_val = raw_val<<((idx-1)*8)
-                        f.value = f.value|raw_val
-                    end
-                    local bits = #f.vals * 8
-                    if f.min and f.min < 0 and (f.value & (1 << (bits - 1)) ~= 0) then
-                        f.value = f.value - (2 ^ bits)
-                    end
-                    f.value = f.value/(f.scale or 1)
-                end
-            end
-        end
+        dataBindField()
         if Page.postLoad then
             Page.postLoad(Page)
             print("Postload executed")
