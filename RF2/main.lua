@@ -1,5 +1,5 @@
 -- RotorFlight + ETHOS LUA configuration
-local LUA_VERSION = "2.0 - 240218"
+local LUA_VERSION = "2.0 - 240222"
 
 apiVersion = 0
 
@@ -67,7 +67,7 @@ protocol = nil
 radio = nil
 sensor = nil
 
-globals = {}
+rfglobals = {}
 
 local function saveSettings()
     if Page.values then
@@ -178,7 +178,7 @@ local function processMspReply(cmd,rx_buf,err)
         if Page.postRead then
             Page.postRead(Page)
         end
-        dataBindField()
+        dataBindFields()
         if Page.postLoad then
             Page.postLoad(Page)
             print("Postload executed")
