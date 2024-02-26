@@ -1,5 +1,5 @@
 -- RotorFlight + ETHOS LUA configuration
-local LUA_VERSION = "2.0 - 240222"
+local LUA_VERSION = "2.0 - 240226"
 
 apiVersion = 0
 
@@ -62,6 +62,8 @@ local EVT_VIRTUAL_ENTER_LONG = 129
 local EVT_VIRTUAL_EXIT = 97
 local EVT_VIRTUAL_PREV = 99
 local EVT_VIRTUAL_NEXT = 98
+
+local MENU_TITLE_BGCOLOR, ITEM_TEXT_SELECTED, ITEM_TEXT_NORMAL, ITEM_TEXT_EDITING
 
 protocol = nil
 radio = nil
@@ -615,13 +617,6 @@ local function event(widget, category, value, x, y)
     return false
 end
 
--- Paint() helpers:
-local MENU_TITLE_BGCOLOR = lcd.RGB(55, 55, 55)  -- dark grey
-local MENU_TITLE_COLOR = lcd.RGB(62, 145, 247)  -- light blue
-local ITEM_TEXT_SELECTED = lcd.RGB(62, 145, 247)  -- selected in light blue
-local ITEM_TEXT_NORMAL = lcd.RGB(200, 200, 200)  -- unselected text in light grey/white
-local ITEM_TEXT_EDITING = lcd.RGB(255, 0, 0)     -- red text
-
 local function drawScreen()
     local LCD_W, LCD_H = getWindowSize()
     if Page then
@@ -668,7 +663,7 @@ local function drawScreen()
                         lcd.font(FONT_BOLD)
                         lcd.color(ITEM_TEXT_EDITING)
                     else
-                        lcd.font(FONT_STD)
+                        lcd.font(FONT_BOLD)
                         lcd.color(ITEM_TEXT_SELECTED)
                     end
                 else
@@ -702,13 +697,16 @@ local function paint(widget)
         return
     end
 
+    MENU_TITLE_BGCOLOR = lcd.themeColor(THEME_FOCUS_BGCOLOR)
+    ITEM_TEXT_SELECTED = lcd.themeColor(THEME_FOCUS_COLOR)
+    ITEM_TEXT_NORMAL = lcd.themeColor(THEME_DEFAULT_COLOR)
+    ITEM_TEXT_EDITING = lcd.themeColor(THEME_WARNING_COLOR)
+
     local LCD_W, LCD_H = getWindowSize()
-    --lcd.color(MENU_TITLE_BGCOLOR)
-    --lcd.drawFilledRectangle(0,0,LCD_W,LCD_H)
 
     if uiState == uiStatus.init then
         print("painting uiState == uiStatus.init")
-        lcd.color(ITEM_TEXT_EDITING)
+        lcd.color(ITEM_TEXT_NORMAL)
         lcd.font(FONT_STD)
         lcd.drawText(6, radio.yMinLimit, init.t)
     elseif uiState == uiStatus.mainMenu then
@@ -757,9 +755,7 @@ local function paint(widget)
             end
             lcd.color(MENU_TITLE_BGCOLOR)
             lcd.drawFilledRectangle(radio.SaveBox.x,radio.SaveBox.y,radio.SaveBox.w,radio.SaveBox.h)
-            lcd.color(MENU_TITLE_COLOR)
-            lcd.drawRectangle(radio.SaveBox.x,radio.SaveBox.y,radio.SaveBox.w,radio.SaveBox.h)
-            lcd.color(MENU_TITLE_COLOR)
+            lcd.color(ITEM_TEXT_NORMAL)
             lcd.font(FONT_L)
             lcd.drawText(radio.SaveBox.x+radio.SaveBox.x_offset,radio.SaveBox.y+radio.SaveBox.h_offset,saveMsg)
         end
@@ -767,16 +763,14 @@ local function paint(widget)
         drawScreen()
     end
 
-    -- drawScreenTitle(screenTitle) from ui.c
     if screenTitle then
         lcd.color(MENU_TITLE_BGCOLOR)
         lcd.drawFilledRectangle(0, 0, LCD_W, 30)
-        lcd.color(MENU_TITLE_COLOR)
+        lcd.color(ITEM_TEXT_NORMAL)
         lcd.font(FONT_STD)
         lcd.drawText(5,5,screenTitle)
     end
 
-    -- drawPopupMenu() from ui.c
     if popupMenu then
         print("painting popupMenu")
         local x = radio.MenuBox.x
@@ -788,10 +782,6 @@ local function paint(widget)
 
         lcd.color(MENU_TITLE_BGCOLOR)
         lcd.drawFilledRectangle(x,y,w,h)
-        lcd.color(MENU_TITLE_COLOR)
-        lcd.drawRectangle(x,y,w-1,h-1)
-        lcd.color(MENU_TITLE_COLOR)
-        lcd.font(FONT_STD)
 
         for i,e in ipairs(popupMenu) do
             if popupMenuActive == i then
