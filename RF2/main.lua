@@ -1,5 +1,5 @@
 -- RotorFlight + ETHOS LUA configuration
-local LUA_VERSION = "2.0 - 240226"
+local LUA_VERSION = "2.0 - 240228"
 
 apiVersion = 0
 
