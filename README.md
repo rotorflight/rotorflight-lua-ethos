@@ -7,7 +7,7 @@
 ## Requirements
 
 - Ethos 1.1.0 or later
-- an X10, X12, X18, X20 or Twin X Lite transmitter
+- an X10, X12, X14, X18, X20 or Twin X Lite transmitter
 - a FrSky Smartport or F.Port receiver using ACCESS, ACCST, TD or TW mode
 
 ## Tested Receivers
