@@ -1,0 +1,30 @@
+name: Testing
+
+on:
+  push:
+    tags:
+      - 'testing/*'
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set build variables
+      run: |
+        echo "GIT_VER=${GITHUB_REF##*/}" >> ${GITHUB_ENV}
+        echo "GIT_TAG=${GITHUB_REF##refs/tags/}" >> ${GITHUB_ENV}
+        cat ${GITHUB_ENV}
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: rotorflight-lua-ethos-testing-${{ env.GIT_VER }}
+        path: RF*
+
+    - name: Delete tag
+      run: git push origin :${GITHUB_REF}
