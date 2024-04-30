@@ -1,4 +1,4 @@
-local LCD_W, LCD_H = getWindowSize()
+local LCD_W, LCD_H = rf2.getWindowSize()
 local resolution = LCD_W.."x"..LCD_H
 
 local supportedRadios =

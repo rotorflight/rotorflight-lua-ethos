@@ -33,27 +33,27 @@ function mspProcessTxQ()
         payload[1] = payload[1] + MSP_STARTFLAG
     end
     local i = 2
-    while (i <= protocol.maxTxBufferSize) and mspTxIdx <= #mspTxBuf do
+    while (i <= rf2.protocol.maxTxBufferSize) and mspTxIdx <= #mspTxBuf do
         payload[i] = mspTxBuf[mspTxIdx]
         mspTxIdx = mspTxIdx + 1
         mspTxCRC = mspTxCRC ~ payload[i]
         i = i + 1
     end
-    if i <= protocol.maxTxBufferSize then
+    if i <= rf2.protocol.maxTxBufferSize then
         payload[i] = mspTxCRC
         i = i + 1
       -- zero fill
-        while i <= protocol.maxTxBufferSize do
+        while i <= rf2.protocol.maxTxBufferSize do
             payload[i] = 0
             i = i + 1
         end
-        protocol.mspSend(payload)
+        rf2.protocol.mspSend(payload)
         mspTxBuf = {}
         mspTxIdx = 1
         mspTxCRC = 0
         return false
     end
-    protocol.mspSend(payload)
+    rf2.protocol.mspSend(payload)
     return true
 end
 
@@ -105,12 +105,12 @@ local function mspReceivedReply(payload)
         mspStarted = false
         return nil
     end
-    while (idx <= protocol.maxRxBufferSize) and (#mspRxBuf < mspRxSize) do
+    while (idx <= rf2.protocol.maxRxBufferSize) and (#mspRxBuf < mspRxSize) do
         mspRxBuf[#mspRxBuf + 1] = payload[idx]
         mspRxCRC = mspRxCRC ~ payload[idx]
         idx = idx + 1
     end
-    if idx > protocol.maxRxBufferSize then
+    if idx > rf2.protocol.maxRxBufferSize then
 		--print("  mspReceivedReply:  payload continues into next frame.")
         -- Store the last sequence number so we can start there on the next continuation payload
         mspRemoteSeq = seq
@@ -129,9 +129,9 @@ local function mspReceivedReply(payload)
 end
 
 function mspPollReply()
-    local startTime = getTime()
-    while (getTime() - startTime < 5) do
-        local mspData = protocol.mspPoll()
+    local startTime = rf2.getTime()
+    while (rf2.getTime() - startTime < 5) do
+        local mspData = rf2.protocol.mspPoll()
         if mspData ~= nil and mspReceivedReply(mspData) then
             mspLastReq = 0
             return mspRxReq, mspRxBuf, mspRxError
