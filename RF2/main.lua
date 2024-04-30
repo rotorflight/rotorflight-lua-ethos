@@ -1,7 +1,5 @@
 -- RotorFlight + ETHOS LUA configuration
-local LUA_VERSION = "2.0 - 240229"
-
-apiVersion = 0
+local LUA_VERSION = "2.0 - 240430"
 
 local uiStatus =
 {
@@ -54,7 +52,7 @@ local enterEvent = nil
 local enterEventTime
 local callCreate = true
 
-lcdNeedsInvalidate = false
+local lcdNeedsInvalidate = false
 
 --- Virtual key translations from Ethos to OpenTX
 local EVT_VIRTUAL_ENTER = 32
@@ -65,11 +63,85 @@ local EVT_VIRTUAL_NEXT = 98
 
 local MENU_TITLE_BGCOLOR, ITEM_TEXT_SELECTED, ITEM_TEXT_NORMAL, ITEM_TEXT_EDITING
 
-protocol = nil
-radio = nil
-sensor = nil
+-- All RF2 globals should be stored in the rf2 table, to avoid conflict with globals from other scripts.
+rf2 = {
+    apiVersion = 0,
+    lastChangedServo = 1,
+    protocol = nil,
+    radio = nil,
+    sensor = nil,
+    dataBindFields = function()
+        for i=1,#Page.fields do
+            if #Page.values >= Page.minBytes then
+                local f = Page.fields[i]
+                if f.vals then
+                    f.value = 0
+                    for idx=1, #f.vals do
+                        local raw_val = Page.values[f.vals[idx]] or 0
+                        raw_val = raw_val<<((idx-1)*8)
+                        f.value = f.value|raw_val
+                    end
+                    local bits = #f.vals * 8
+                    if f.min and f.min < 0 and (f.value & (1 << (bits - 1)) ~= 0) then
+                        f.value = f.value - (2 ^ bits)
+                    end
+                    f.value = f.value/(f.scale or 1)
+                end
+            end
+        end
+    end,
 
-rfglobals = {}
+    -- OpenTX <-> Ethos mapping functions
+    sportTelemetryPop = function()
+        -- Pops a received SPORT packet from the queue. Please note that only packets using a data ID within 0x5000 to 0x50FF (frame ID == 0x10), as well as packets with a frame ID equal 0x32 (regardless of the data ID) will be passed to the LUA telemetry receive queue.
+        local frame = rf2.sensor:popFrame()
+        if frame == nil then
+            return nil, nil, nil, nil
+        end
+        -- physId = physical / remote sensor Id (aka sensorId)
+        --   0x00 for FPORT, 0x1B for SmartPort
+        -- primId = frame ID  (should be 0x32 for reply frames)
+        -- appId = data Id
+        return frame:physId(), frame:primId(), frame:appId(), frame:value()
+    end,
+
+    sportTelemetryPush = function(sensorId, frameId, dataId, value)
+        -- OpenTX:
+        -- When called without parameters, it will only return the status of the output buffer without sending anything.
+        --   Equivalent in Ethos may be:   sensor:idle() ???
+        -- @param sensorId  physical sensor ID
+        -- @param frameId   frame ID
+        -- @param dataId    data ID
+        -- @param value     value
+        -- @retval boolean  data queued in output buffer or not.
+        -- @retval nil      incorrect telemetry protocol.  (added in 2.3.4)
+        return rf2.sensor:pushFrame({physId=sensorId, primId=frameId, appId=dataId, value=value})
+    end,
+
+    getRSSI = function()
+        if rssiSensor ~= nil and rssiSensor:state() then
+            -- this will return the last known value if nothing is received
+            return rssiSensor:value()
+        end
+        -- return 0 if no telemetry signal to match OpenTX
+        return 0
+    end,
+
+    getTime = function()
+        return os.clock() * 100;
+    end,
+
+    loadScript = function(script)
+        return loadfile(script)
+    end,
+
+    getWindowSize = function()
+        return lcd.getWindowSize()
+        --return 784, 406
+        --return 472, 288
+        --return 472, 240
+    end
+}
 
 local function saveSettings()
     if Page.values then
@@ -85,7 +157,7 @@ local function saveSettings()
             saveRetries = 0
             print("Attempting to write page values...")
         end
-        protocol.mspWrite(Page.write, payload)
+        rf2.protocol.mspWrite(Page.write, payload)
     end
 end
 
@@ -98,7 +170,7 @@ local function eepromWrite()
         saveRetries = 0
         print("Attempting to write to eeprom...")
     end
-    protocol.mspRead(uiMsp.eepromWrite)
+    rf2.protocol.mspRead(uiMsp.eepromWrite)
 end
 
 local function rebootFc()
@@ -108,7 +180,7 @@ local function rebootFc()
     print("Attempting to reboot the FC (one shot)...")
     saveTS = os.clock()
     pageState = pageStatus.rebooting
-    protocol.mspRead(uiMsp.reboot)
+    rf2.protocol.mspRead(uiMsp.reboot)
     -- https://github.com/rotorflight/rotorflight-firmware/blob/9a5b86d915df557ff320f30f1376cb8ce9377157/src/main/msp/msp.c#L1853
 end
 
@@ -125,30 +197,9 @@ local function confirm(page)
     uiState = uiStatus.confirm
     invalidatePages()
     currentField = 1
-    Page = assert(loadScript(page))()
+    Page = assert(rf2.loadScript(page))()
     lcdNeedsInvalidate = true
     collectgarbage()
-end
-
-function dataBindFields()
-    for i=1,#Page.fields do
-        if #Page.values >= Page.minBytes then
-            local f = Page.fields[i]
-            if f.vals then
-                f.value = 0
-                for idx=1, #f.vals do
-                    local raw_val = Page.values[f.vals[idx]] or 0
-                    raw_val = raw_val<<((idx-1)*8)
-                    f.value = f.value|raw_val
-                end
-                local bits = #f.vals * 8
-                if f.min and f.min < 0 and (f.value & (1 << (bits - 1)) ~= 0) then
-                    f.value = f.value - (2 ^ bits)
-                end
-                f.value = f.value/(f.scale or 1)
-            end
-        end
-    end
 end
 
 -- Run lcd.invalidate() if anything actionable comes back from it.
@@ -180,7 +231,7 @@ local function processMspReply(cmd,rx_buf,err)
         if Page.postRead then
             Page.postRead(Page)
         end
-        dataBindFields()
+        rf2.dataBindFields()
         if Page.postLoad then
             Page.postLoad(Page)
             print("Postload executed")
@@ -193,7 +244,7 @@ local function requestPage()
     if Page.read and ((not Page.reqTS) or (Page.reqTS + requestTimeout <= os.clock())) then
         --print("Trying requestPage()")
         Page.reqTS = os.clock()
-        protocol.mspRead(Page.read)
+        rf2.protocol.mspRead(Page.read)
     end
 end
 
@@ -254,67 +305,12 @@ local function incValue(inc)
     end
 end
 
--- OpenTX <-> Ethos mapping functions
-
-function sportTelemetryPop()
-    -- Pops a received SPORT packet from the queue. Please note that only packets using a data ID within 0x5000 to 0x50FF (frame ID == 0x10), as well as packets with a frame ID equal 0x32 (regardless of the data ID) will be passed to the LUA telemetry receive queue.
-    local frame = sensor:popFrame()
-    if frame == nil then
-        return nil, nil, nil, nil
-    end
-    -- physId = physical / remote sensor Id (aka sensorId)
-    --   0x00 for FPORT, 0x1B for SmartPort
-    -- primId = frame ID  (should be 0x32 for reply frames)
-    -- appId = data Id
-    return frame:physId(), frame:primId(), frame:appId(), frame:value()
-end
-
-function sportTelemetryPush(sensorId, frameId, dataId, value)
-    -- OpenTX:
-    -- When called without parameters, it will only return the status of the output buffer without sending anything.
-    --   Equivalent in Ethos may be:   sensor:idle() ???
-    -- @param sensorId  physical sensor ID
-    -- @param frameId   frame ID
-    -- @param dataId    data ID
-    -- @param value     value
-    -- @retval boolean  data queued in output buffer or not.
-    -- @retval nil      incorrect telemetry protocol.  (added in 2.3.4)
-    return sensor:pushFrame({physId=sensorId, primId=frameId, appId=dataId, value=value})
-end
-
--- Ethos: when the RF1 and RF2 system tools are both installed, RF1 tries to call getRSSI in RF2 and gets stuck.
--- To avoid this, getRSSI is renamed in RF2.
-function rf2_getRSSI()
-      --print("getRSSI RF2")
-    if rssiSensor ~= nil and rssiSensor:state() then
-      -- this will return the last known value if nothing is received
-      return rssiSensor:value()
-    end
-    -- return 0 if no telemetry signal to match OpenTX
-    return 0
-end
-
-function getTime()
-    return os.clock() * 100;
-end
-
-function loadScript(script)
-    return loadfile(script)
-end
-
-function getWindowSize()
-    return lcd.getWindowSize()
-    --return 784, 406
-    --return 472, 288
-    --return 472, 240
-end
-
 local function updateTelemetryState()
     local oldTelemetryState = telemetryState
 
     if not rssiSensor then
         telemetryState = telemetryStatus.noSensor
-    elseif rf2_getRSSI() == 0 then
+    elseif rf2.getRSSI() == 0 then
         telemetryState = telemetryStatus.noTelemetry
     else
         telemetryState = telemetryStatus.ok
@@ -338,7 +334,7 @@ end
 
 -- CREATE:  Called once each time the system widget is opened by the user.
 local function create()
-    sensor = sport.getSensor({primId=0x32})
+    rf2.sensor = sport.getSensor({primId=0x32})
     rssiSensor = system.getSource("RSSI")
     if not rssiSensor then
         rssiSensor = system.getSource("RSSI 2.4G")
@@ -353,23 +349,23 @@ local function create()
         end
     end
 
-    --sensor:idle(false)
+    --rf2.sensor:idle(false)
 
-    protocol = assert(loadScript("/scripts/RF2/protocols.lua"))()
-    radio = assert(loadScript("/scripts/RF2/radios.lua"))().msp
-    assert(loadScript(protocol.mspTransport))()
-    assert(loadScript("/scripts/RF2/MSP/common.lua"))()
+    rf2.protocol = assert(rf2.loadScript("/scripts/RF2/protocols.lua"))()
+    rf2.radio = assert(rf2.loadScript("/scripts/RF2/radios.lua"))().msp
+    assert(rf2.loadScript(rf2.protocol.mspTransport))()
+    assert(rf2.loadScript("/scripts/RF2/MSP/common.lua"))()
 
     -- Initial var setting
-    saveTimeout = protocol.saveTimeout
-    saveMaxRetries = protocol.saveMaxRetries
-    requestTimeout = protocol.pageReqTimeout
+    saveTimeout = rf2.protocol.saveTimeout
+    saveMaxRetries = rf2.protocol.saveMaxRetries
+    requestTimeout = rf2.protocol.pageReqTimeout
     screenTitle = "Rotorflight "..LUA_VERSION
     uiState = uiStatus.init
     init = nil
     popupMenu = nil
     lastEvent = nil
-    apiVersion = 0
+    rf2.apiVersion = 0
     callCreate = false
 
     return {}
@@ -392,7 +388,7 @@ local function wakeup(widget)
 		enterEvent = nil
 	end
 
-    if (radio == nil or protocol == nil) then
+    if (rf2.radio == nil or rf2.protocol == nil) then
         print("Error:  wakeup() called but create must have failed!")
         return 0
     end
@@ -421,7 +417,7 @@ local function wakeup(widget)
         if init ~= nil then
             prevInit = init.t
         end
-        init = init or assert(loadScript("/scripts/RF2/ui_init.lua"))()
+        init = init or assert(rf2.loadScript("/scripts/RF2/ui_init.lua"))()
         if lastEvent == EVT_VIRTUAL_EXIT then
 			lastEvent = nil
 			lcd.invalidate()
@@ -439,7 +435,7 @@ local function wakeup(widget)
             return 0
         end
         init = nil
-        PageFiles = assert(loadScript("/scripts/RF2/pages.lua"))()
+        PageFiles = assert(rf2.loadScript("/scripts/RF2/pages.lua"))()
         invalidatePages()
         uiState = prevUiState or uiStatus.mainMenu
         prevUiState = nil
@@ -544,7 +540,7 @@ local function wakeup(widget)
             end
         end
         if not Page then
-            Page = assert(loadScript("/scripts/RF2/PAGES/"..PageFiles[currentPage].script))()
+            Page = assert(rf2.loadScript("/scripts/RF2/PAGES/"..PageFiles[currentPage].script))()
             collectgarbage()
         end
         if not Page.values and pageState == pageStatus.display then
@@ -618,10 +614,10 @@ local function event(widget, category, value, x, y)
 end
 
 local function drawScreen()
-    local LCD_W, LCD_H = getWindowSize()
+    local LCD_W, LCD_H = rf2.getWindowSize()
     if Page then
-        local yMinLim = radio.yMinLimit
-        local yMaxLim = radio.yMaxLimit
+        local yMinLim = rf2.radio.yMinLimit
+        local yMaxLim = rf2.radio.yMaxLimit
         local currentFieldY = Page.fields[currentField].y
         if currentFieldY <= Page.fields[1].y then
             pageScrollY = 0
@@ -692,7 +688,7 @@ end
 -- PAINT:  Called when the screen or a portion of the screen is invalidated (timer, etc)
 local function paint(widget)
 
-    if (radio == nil or protocol == nil) then
+    if (rf2.radio == nil or rf2.protocol == nil) then
         print("Error:  paint() called, but create must have failed!")
         return
     end
@@ -702,18 +698,18 @@ local function paint(widget)
     ITEM_TEXT_NORMAL = lcd.themeColor(THEME_DEFAULT_COLOR)
     ITEM_TEXT_EDITING = lcd.themeColor(THEME_WARNING_COLOR)
 
-    local LCD_W, LCD_H = getWindowSize()
+    local LCD_W, LCD_H = rf2.getWindowSize()
 
     if uiState == uiStatus.init then
         print("painting uiState == uiStatus.init")
         lcd.color(ITEM_TEXT_NORMAL)
         lcd.font(FONT_STD)
-        lcd.drawText(6, radio.yMinLimit, init.t)
+        lcd.drawText(6, rf2.radio.yMinLimit, init.t)
     elseif uiState == uiStatus.mainMenu then
         print("painting uiState == uiStatus.mainMenu")
-        local yMinLim = radio.yMinLimit
-        local yMaxLim = radio.yMaxLimit
-        local lineSpacing = radio.lineSpacing
+        local yMinLim = rf2.radio.yMinLimit
+        local yMaxLim = rf2.radio.yMaxLimit
+        local lineSpacing = rf2.radio.lineSpacing
         local currentFieldY = (currentPage-1)*lineSpacing + yMinLim
         if currentFieldY <= yMinLim then
             mainMenuScrollY = 0
@@ -754,10 +750,10 @@ local function paint(widget)
                 saveMsg = "Rebooting..."
             end
             lcd.color(MENU_TITLE_BGCOLOR)
-            lcd.drawFilledRectangle(radio.SaveBox.x,radio.SaveBox.y,radio.SaveBox.w,radio.SaveBox.h)
+            lcd.drawFilledRectangle(rf2.radio.SaveBox.x,rf2.radio.SaveBox.y,rf2.radio.SaveBox.w,rf2.radio.SaveBox.h)
             lcd.color(ITEM_TEXT_NORMAL)
             lcd.font(FONT_L)
-            lcd.drawText(radio.SaveBox.x+radio.SaveBox.x_offset,radio.SaveBox.y+radio.SaveBox.h_offset,saveMsg)
+            lcd.drawText(rf2.radio.SaveBox.x+rf2.radio.SaveBox.x_offset,rf2.radio.SaveBox.y+rf2.radio.SaveBox.h_offset,saveMsg)
         end
     elseif uiState == uiStatus.confirm then
         drawScreen()
@@ -773,11 +769,11 @@ local function paint(widget)
 
     if popupMenu then
         print("painting popupMenu")
-        local x = radio.MenuBox.x
-        local y = radio.MenuBox.y
-        local w = radio.MenuBox.w
-        local h_line = radio.MenuBox.h_line
-        local h_offset = radio.MenuBox.h_offset
+        local x = rf2.radio.MenuBox.x
+        local y = rf2.radio.MenuBox.y
+        local w = rf2.radio.MenuBox.w
+        local h_line = rf2.radio.MenuBox.h_line
+        local h_offset = rf2.radio.MenuBox.h_offset
         local h = #popupMenu * h_line + h_offset*2
 
         lcd.color(MENU_TITLE_BGCOLOR)
@@ -791,7 +787,7 @@ local function paint(widget)
                 lcd.font(FONT_STD)
                 lcd.color(ITEM_TEXT_NORMAL)
             end
-           lcd.drawText(x+radio.MenuBox.x_offset,y+(i-1)*h_line+h_offset,e.t)
+           lcd.drawText(x+rf2.radio.MenuBox.x_offset,y+(i-1)*h_line+h_offset,e.t)
         end
     end
 

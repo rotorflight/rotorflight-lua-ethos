@@ -10,9 +10,9 @@ local function processMspReply(cmd,rx_buf,err)
 end
 
 local function accCal()
-    if not accCalibrated and (lastRunTS == 0 or lastRunTS + INTERVAL < getTime()) then
-        protocol.mspRead(MSP_ACC_CALIBRATION)
-        lastRunTS = getTime()
+    if not accCalibrated and (lastRunTS == 0 or lastRunTS + INTERVAL < rf2.getTime()) then
+        rf2.protocol.mspRead(MSP_ACC_CALIBRATION)
+        lastRunTS = rf2.getTime()
     end
 
     mspProcessTxQ()
