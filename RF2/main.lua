@@ -65,10 +65,11 @@ local MENU_TITLE_BGCOLOR, ITEM_TEXT_SELECTED, ITEM_TEXT_NORMAL, ITEM_TEXT_EDITIN
 
 -- All RF2 globals should be stored in the rf2 table, to avoid conflict with globals from other scripts.
 rf2 = {
-    apiVersion = 0,
     lastChangedServo = 1,
     protocol = nil,
     radio = nil,
+    fc = {},
+    mspMessageController = nil,
     sensor = nil,
     dataBindFields = function()
         for i=1,#Page.fields do
@@ -353,6 +354,7 @@ local function create()
 
     rf2.protocol = assert(rf2.loadScript("/scripts/RF2/protocols.lua"))()
     rf2.radio = assert(rf2.loadScript("/scripts/RF2/radios.lua"))().msp
+    rf2.mspController = assert(rf2.loadScript("/scripts/RF2/msp.lua"))()
     assert(rf2.loadScript(rf2.protocol.mspTransport))()
     assert(rf2.loadScript("/scripts/RF2/MSP/common.lua"))()
 
@@ -365,7 +367,7 @@ local function create()
     init = nil
     popupMenu = nil
     lastEvent = nil
-    rf2.apiVersion = 0
+    rf2.fc.apiVersion = 0
     callCreate = false
 
     return {}

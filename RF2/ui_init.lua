@@ -15,8 +15,8 @@ local function init()
             getApiVersion = nil
             collectgarbage()
         end
-    elseif tostring(rf2.apiVersion) ~= SUPPORTED_API_VERSION then -- work-around for comparing floats
-        returnTable.t = "This version of the Lua scripts ("..SUPPORTED_API_VERSION..")\ncan't be used with the selected model ("..tostring(rf2.apiVersion)..")."
+    elseif tostring(rf2.fc.apiVersion) ~= SUPPORTED_API_VERSION then -- work-around for comparing floats
+        returnTable.t = "This version of the Lua scripts ("..SUPPORTED_API_VERSION..")\ncan't be used with the selected model ("..tostring(rf2.fc.apiVersion)..")."
     else
         -- received correct API version, proceed
         return true
