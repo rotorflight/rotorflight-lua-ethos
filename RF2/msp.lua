@@ -28,7 +28,8 @@ function MspMessageController.new()
     local self = {
         messageQueue = {},
         currentMessage = nil,
-        lastRunTS = 0,
+        lastTimeCommandSent = 0,
+        --lastTimeIsReadyExecuted = 0,
         messages = {
             MSP_API_VERSION = mspApiVersion,
             MSP_ACC_CALIBRATION = mspAccCalibration
@@ -36,17 +37,25 @@ function MspMessageController.new()
     }
 
     function self:isReady(value)
-        if not self.currentMessage and #self.messageQueue == 0 then
-            return true
-        end
-
         if not self.currentMessage then
-            self.currentMessage = table.remove(self.messageQueue, 1)
+            if #self.messageQueue == 0 then
+                return true
+            else
+                self.currentMessage = table.remove(self.messageQueue, 1)
+            end
         end
 
-        if self.lastRunTS == 0 or self.lastRunTS + 50 < rf2.getTime() then
+        --[[ TODO: check whether many calls to isReady are an issue
+        if self.lastTimeIsReadyExecuted ~= 0 and self.lastTimeIsReadyExecuted + 1 > rf2.getTime() then
+            return false
+        else
+            self.lastTimeIsReadyExecuted = rf2.getTime()
+        end
+        --]]
+
+        if self.lastTimeCommandSent == 0 or self.lastTimeCommandSent + 50 < rf2.getTime() then
             rf2.protocol.mspRead(self.currentMessage.command)
-            self.lastRunTS = getTime()
+            self.lastTimeCommandSent = getTime()
         end
 
         mspProcessTxQ()
