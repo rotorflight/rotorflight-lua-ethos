@@ -29,33 +29,35 @@ function MspMessageController.new()
         messageQueue = {},
         currentMessage = nil,
         lastTimeCommandSent = 0,
-        --lastTimeIsReadyExecuted = 0,
+        retryCount = 0,
         messages = {
             MSP_API_VERSION = mspApiVersion,
             MSP_ACC_CALIBRATION = mspAccCalibration
         }
     }
 
-    function self:isReady(value)
-        if not self.currentMessage then
-            if #self.messageQueue == 0 then
-                return true
-            else
-                self.currentMessage = table.remove(self.messageQueue, 1)
-            end
+    function self:isReady()
+        return not self.currentMessage and #self.messageQueue == 0
+    end
+
+    function self:processQueue()
+        if self:isReady() then
+            return
         end
 
-        --[[ TODO: check whether many calls to isReady are an issue
-        if self.lastTimeIsReadyExecuted ~= 0 and self.lastTimeIsReadyExecuted + 1 > rf2.getTime() then
-            return false
-        else
-            self.lastTimeIsReadyExecuted = rf2.getTime()
+        if not self.currentMessage then
+            self.currentMessage = table.remove(self.messageQueue, 1)
+            self.retryCount = 0
         end
-        --]]
 
         if self.lastTimeCommandSent == 0 or self.lastTimeCommandSent + 50 < rf2.getTime() then
-            rf2.protocol.mspRead(self.currentMessage.command)
+            if self.currentMessage.payload then
+                rf2.protocol.mspWrite(self.currentMessage.command, self.currentMessage.payload)
+            else
+                rf2.protocol.mspRead(self.currentMessage.command)
+            end
             self.lastTimeCommandSent = getTime()
+            self.retryCount = self.retryCount + 1
         end
 
         mspProcessTxQ()
@@ -66,13 +68,14 @@ function MspMessageController.new()
         local cmd, buf, err = returnExampleTuple(self.currentMessage.exampleResponse)
         --]]
 
-        if cmd == self.currentMessage.command and not err then
-            if self.currentMessage.processReply(self.currentMessage, buf) then
-                self.currentMessage = nil
+        if (cmd == self.currentMessage.command and not err) or (self.currentMessage.command == 68 and self.retryCount == 2) then
+            if self.currentMessage.processReply then
+                self.currentMessage:processReply(buf)
             end
+            self.currentMessage = nil
+        elseif self.retryCount == 3 then
+            self.currentMessage = nil
         end
-
-        return false
     end
 
     function self:add(message)

@@ -25,25 +25,16 @@ local telemetryStatus =
     noTelemetry = 3
 }
 
-local uiMsp =
-{
-    reboot = 68,
-    eepromWrite = 250,
-}
-
 local uiState = uiStatus.init
 local prevUiState
 local pageState = pageStatus.display
--- local requestTimeout = 1.5   -- in seconds (originally 0.8)
 local currentPage = 1
 local currentField = 1
-local saveTS = 0
-local saveRetries = 0
 local popupMenuActive = 1
 local pageScrollY = 0
 local mainMenuScrollY = 0
 local telemetryState
-local saveTimeout, saveMaxRetries, PageFiles, Page, init, popupMenu, requestTimeout, rssiSensor
+local PageFiles, Page, init, popupMenu, requestTimeout, rssiSensor
 
 -- New variables for Ethos version
 local screenTitle = nil
@@ -144,53 +135,62 @@ rf2 = {
     end
 }
 
+local function invalidatePages()
+    Page = nil
+    pageState = pageStatus.display
+    collectgarbage()
+    lcdNeedsInvalidate = true
+end
+
+local function rebootFc()
+    print("Attempting to reboot the FC...")
+    pageState = pageStatus.rebooting
+    rf2.mspController:addCustom({ command = 68, processReply = function(s, buf) invalidatePages() end })
+end
+
+local mspEepromWrite =
+{
+    command = 250, -- MSP_EEPROM_WRITE, fails when armed
+    processReply = function(s, buf)
+        if Page.reboot then
+            rebootFc()
+        end
+        invalidatePages()
+    end
+}
+
+local mspSaveSettings =
+{
+    processReply = function(s, buf)
+        -- check if this page requires writing to eeprom to save (most do)
+        if Page and Page.eepromWrite then
+            -- don't write again if we're already responding to earlier page.write()s
+            if pageState ~= pageStatus.eepromWrite then
+                pageState = pageStatus.eepromWrite
+                rf2.mspController:addCustom(mspEepromWrite)
+            end
+        elseif pageState ~= pageStatus.eepromWrite then
+            -- If we're not already trying to write to eeprom from a previous save, then we're done.
+            invalidatePages()
+        end
+        lcdNeedsInvalidate = true
+    end
+}
+
 local function saveSettings()
     if Page.values then
         local payload = Page.values
         if Page.preSave then
             payload = Page.preSave(Page)
         end
-        saveTS = os.clock()
-        if pageState == pageStatus.saving then
-            saveRetries = saveRetries + 1
-        else
+        if pageState ~= pageStatus.saving then
             pageState = pageStatus.saving
-            saveRetries = 0
+            mspSaveSettings.command = Page.write
+            mspSaveSettings.payload = payload
+            rf2.mspController:addCustom(mspSaveSettings)
             print("Attempting to write page values...")
         end
-        rf2.protocol.mspWrite(Page.write, payload)
     end
-end
-
-local function eepromWrite()
-    saveTS = os.clock()
-    if pageState == pageStatus.eepromWrite then
-        saveRetries = saveRetries + 1
-    else
-        pageState = pageStatus.eepromWrite
-        saveRetries = 0
-        print("Attempting to write to eeprom...")
-    end
-    rf2.protocol.mspRead(uiMsp.eepromWrite)
-end
-
-local function rebootFc()
-    -- Only sent once.  I think a response may come back from FC if successful?
-    -- May want to either check for that and repeat if not, or check for loss of telemetry to confirm, etc.
-    -- TODO: Implement an auto-retry?  Right now if the command gets lost then there's just no reboot and no notice.
-    print("Attempting to reboot the FC (one shot)...")
-    saveTS = os.clock()
-    pageState = pageStatus.rebooting
-    rf2.protocol.mspRead(uiMsp.reboot)
-    -- https://github.com/rotorflight/rotorflight-firmware/blob/9a5b86d915df557ff320f30f1376cb8ce9377157/src/main/msp/msp.c#L1853
-end
-
-local function invalidatePages()
-    Page = nil
-    pageState = pageStatus.display
-    saveTS = 0
-    collectgarbage()
-    lcdNeedsInvalidate = true
 end
 
 local function confirm(page)
@@ -204,12 +204,13 @@ local function confirm(page)
 end
 
 -- Run lcd.invalidate() if anything actionable comes back from it.
-local function processMspReply(cmd,rx_buf,err)
+local function processMspReply(cmd, rx_buf, err)
     if Page and rx_buf ~= nil then
         print("Page is processing reply for cmd "..tostring(cmd).." len rx_buf: "..#rx_buf.." expected: "..Page.minBytes)
     end
     if not Page or not rx_buf then
     elseif cmd == Page.write then
+--[[
         -- check if this page requires writing to eeprom to save (most do)
         if Page.eepromWrite then
             -- don't write again if we're already responding to earlier page.write()s
@@ -221,11 +222,7 @@ local function processMspReply(cmd,rx_buf,err)
             invalidatePages()
         end
         lcdNeedsInvalidate = true
-    elseif cmd == uiMsp.eepromWrite then
-        if Page.reboot then
-            rebootFc()
-        end
-        invalidatePages()
+--]]
     elseif (cmd == Page.read) and (#rx_buf > 0) then
         --print("processMspReply:  Page.read and non-zero rx_buf")
         Page.values = rx_buf
@@ -245,7 +242,14 @@ local function requestPage()
     if Page.read and ((not Page.reqTS) or (Page.reqTS + requestTimeout <= os.clock())) then
         --print("Trying requestPage()")
         Page.reqTS = os.clock()
-        rf2.protocol.mspRead(Page.read)
+        rf2.mspController:addCustom({
+            command = Page.read,
+            processReply = function(s, buf)
+                processMspReply(s.command, buf, nil)
+                return true
+            end
+        })
+        --rf2.protocol.mspRead(Page.read)
     end
 end
 
@@ -272,12 +276,6 @@ local function clipValue(val,min,max)
     end
     return val
 end
-
--- local function incPage(inc)
-    -- currentPage = incMax(currentPage, inc, #PageFiles)
-    -- currentField = 1
-    -- invalidatePages()
--- end
 
 local function incField(inc)
     if not Page then return end
@@ -359,8 +357,8 @@ local function create()
     assert(rf2.loadScript("/scripts/RF2/MSP/common.lua"))()
 
     -- Initial var setting
-    saveTimeout = rf2.protocol.saveTimeout
-    saveMaxRetries = rf2.protocol.saveMaxRetries
+    --saveTimeout = rf2.protocol.saveTimeout
+    --saveMaxRetries = rf2.protocol.saveMaxRetries
     requestTimeout = rf2.protocol.pageReqTimeout
     screenTitle = "Rotorflight "..LUA_VERSION
     uiState = uiStatus.init
@@ -471,35 +469,7 @@ local function wakeup(widget)
             prevUiState = uiState
         end
 
-        if pageState == pageStatus.saving then
-            if (saveTS + saveTimeout) < os.clock() then
-                if saveRetries < saveMaxRetries then
-                    saveSettings()
-                    lcdNeedsInvalidate = true
-                else
-                    print("Failed to write page values!")
-                    invalidatePages()
-                end
-                -- drop through to processMspReply to send MSP_SET and see if we've received a response to this yet.
-            end
-        elseif pageState == pageStatus.eepromWrite then
-            if (saveTS + saveTimeout) < os.clock() then
-                if saveRetries < saveMaxRetries then
-                    eepromWrite()
-                    lcdNeedsInvalidate = true
-                else
-                    print("Failed to write to eeprom!")
-                    invalidatePages()
-                end
-                -- drop through to processMspReply to send MSP_SET and see if we've received a response to this yet.
-            end
-        elseif pageState == pageStatus.rebooting then
-            -- TODO:  Rebooting is only a one-try shot.  Would be nice if it retried automatically.
-            if (saveTS + saveTimeout) < os.clock() then
-                invalidatePages()
-            end
-            -- drop through to processMspReply to send MSP_SET and see if we've received a response to this yet.
-        elseif pageState == pageStatus.display then
+        if pageState == pageStatus.display then
             if lastEvent == EVT_VIRTUAL_PREV then
                 incField(-1)
                 lcdNeedsInvalidate = true
@@ -562,8 +532,9 @@ local function wakeup(widget)
 
     -- Process outgoing TX packets and check for incoming frames
     -- Should run every wakeup() cycle with a few exceptions where returns happen earlier
-    mspProcessTxQ()
-    processMspReply(mspPollReply())
+    rf2.mspController:processQueue()
+    --mspProcessTxQ()
+    --processMspReply(mspPollReply())
     lastEvent = nil
 
     if lcdNeedsInvalidate == true then
@@ -740,14 +711,8 @@ local function paint(widget)
             local saveMsg = ""
             if pageState == pageStatus.saving then
                 saveMsg = "Saving..."
-                if saveRetries > 0 then
-                    saveMsg = "Retry #"..string.format("%u",saveRetries)
-                end
             elseif pageState == pageStatus.eepromWrite then
                 saveMsg = "Updating..."
-                if saveRetries > 0 then
-                    saveMsg = "Retry #"..string.format("%u",saveRetries)
-                end
             elseif pageState == pageStatus.rebooting then
                 saveMsg = "Rebooting..."
             end
