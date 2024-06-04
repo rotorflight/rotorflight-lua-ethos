@@ -34,12 +34,12 @@ function MspQueueController.new()
         }
     }
 
-    function self:isReady()
+    function self:isProcessed()
         return not self.currentMessage and #self.messageQueue == 0
     end
 
     function self:processQueue()
-        if self:isReady() then
+        if self:isProcessed() then
             return
         end
 
@@ -107,6 +107,6 @@ myMspQueue
   :add("MSP_ACC_CALIBRATION")
   :addCustom(mspCustom)
 
-while myMspQueue:process() do end
+while not myMspQueue:isProcessed() do end
 --]]
 
