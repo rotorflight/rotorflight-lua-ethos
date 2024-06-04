@@ -60,7 +60,7 @@ rf2 = {
     protocol = nil,
     radio = nil,
     fc = {},
-    mspMessageController = nil,
+    mspQueue = nil,
     sensor = nil,
     dataBindFields = function()
         for i=1,#Page.fields do
@@ -145,13 +145,18 @@ end
 local function rebootFc()
     print("Attempting to reboot the FC...")
     pageState = pageStatus.rebooting
-    rf2.mspController:addCustom({ command = 68, processReply = function(s, buf) invalidatePages() end })
+    rf2.mspQueue:addCustom({
+        command = 68, -- MSP_REBOOT
+        processReply = function(self, buf)
+            invalidatePages()
+        end
+    })
 end
 
 local mspEepromWrite =
 {
     command = 250, -- MSP_EEPROM_WRITE, fails when armed
-    processReply = function(s, buf)
+    processReply = function(self, buf)
         if Page.reboot then
             rebootFc()
         end
@@ -161,13 +166,13 @@ local mspEepromWrite =
 
 local mspSaveSettings =
 {
-    processReply = function(s, buf)
+    processReply = function(self, buf)
         -- check if this page requires writing to eeprom to save (most do)
         if Page and Page.eepromWrite then
             -- don't write again if we're already responding to earlier page.write()s
             if pageState ~= pageStatus.eepromWrite then
                 pageState = pageStatus.eepromWrite
-                rf2.mspController:addCustom(mspEepromWrite)
+                rf2.mspQueue:addCustom(mspEepromWrite)
             end
         elseif pageState ~= pageStatus.eepromWrite then
             -- If we're not already trying to write to eeprom from a previous save, then we're done.
@@ -187,7 +192,7 @@ local function saveSettings()
             pageState = pageStatus.saving
             mspSaveSettings.command = Page.write
             mspSaveSettings.payload = payload
-            rf2.mspController:addCustom(mspSaveSettings)
+            rf2.mspQueue:addCustom(mspSaveSettings)
             print("Attempting to write page values...")
         end
     end
@@ -203,53 +208,27 @@ local function confirm(page)
     collectgarbage()
 end
 
--- Run lcd.invalidate() if anything actionable comes back from it.
-local function processMspReply(cmd, rx_buf, err)
-    if Page and rx_buf ~= nil then
-        print("Page is processing reply for cmd "..tostring(cmd).." len rx_buf: "..#rx_buf.." expected: "..Page.minBytes)
-    end
-    if not Page or not rx_buf then
-    elseif cmd == Page.write then
---[[
-        -- check if this page requires writing to eeprom to save (most do)
-        if Page.eepromWrite then
-            -- don't write again if we're already responding to earlier page.write()s
-            if pageState ~= pageStatus.eepromWrite then
-                eepromWrite()
-            end
-        elseif pageState ~= pageStatus.eepromWrite then
-            -- If we're not already trying to write to eeprom from a previous save, then we're done.
-            invalidatePages()
-        end
-        lcdNeedsInvalidate = true
---]]
-    elseif (cmd == Page.read) and (#rx_buf > 0) then
-        --print("processMspReply:  Page.read and non-zero rx_buf")
-        Page.values = rx_buf
+local mspLoadSettings =
+{
+    processReply = function(self, buf)
+        print("Page is processing reply for cmd "..tostring(self.command).." len buf: "..#buf.." expected: "..Page.minBytes)
+        Page.values = buf
         if Page.postRead then
             Page.postRead(Page)
         end
         rf2.dataBindFields()
         if Page.postLoad then
             Page.postLoad(Page)
-            print("Postload executed")
         end
         lcdNeedsInvalidate = true
     end
-end
+}
 
 local function requestPage()
-    if Page.read and ((not Page.reqTS) or (Page.reqTS + requestTimeout <= os.clock())) then
-        --print("Trying requestPage()")
+    if Page.read and (not Page.reqTS or Page.reqTS + requestTimeout <= os.clock()) then
         Page.reqTS = os.clock()
-        rf2.mspController:addCustom({
-            command = Page.read,
-            processReply = function(s, buf)
-                processMspReply(s.command, buf, nil)
-                return true
-            end
-        })
-        --rf2.protocol.mspRead(Page.read)
+        mspLoadSettings.command = Page.read
+        rf2.mspQueue:addCustom(mspLoadSettings)
     end
 end
 
@@ -352,13 +331,13 @@ local function create()
 
     rf2.protocol = assert(rf2.loadScript("/scripts/RF2/protocols.lua"))()
     rf2.radio = assert(rf2.loadScript("/scripts/RF2/radios.lua"))().msp
-    rf2.mspController = assert(rf2.loadScript("/scripts/RF2/msp.lua"))()
+    rf2.mspQueue = assert(rf2.loadScript("/scripts/RF2/mspqueue.lua"))()
     assert(rf2.loadScript(rf2.protocol.mspTransport))()
     assert(rf2.loadScript("/scripts/RF2/MSP/common.lua"))()
 
     -- Initial var setting
     --saveTimeout = rf2.protocol.saveTimeout
-    --saveMaxRetries = rf2.protocol.saveMaxRetries
+    rf2.mspQueue.maxRetries = rf2.protocol.maxRetries
     requestTimeout = rf2.protocol.pageReqTimeout
     screenTitle = "Rotorflight "..LUA_VERSION
     uiState = uiStatus.init
@@ -532,9 +511,8 @@ local function wakeup(widget)
 
     -- Process outgoing TX packets and check for incoming frames
     -- Should run every wakeup() cycle with a few exceptions where returns happen earlier
-    rf2.mspController:processQueue()
-    --mspProcessTxQ()
-    --processMspReply(mspPollReply())
+    rf2.mspQueue:processQueue()
+
     lastEvent = nil
 
     if lcdNeedsInvalidate == true then

@@ -6,18 +6,18 @@ local supportedProtocols =
         push            = rf2.sportTelemetryPush,
         maxTxBufferSize = 6,
         maxRxBufferSize = 6,
-        saveMaxRetries  = 3,      -- originally 2
+        maxRetries      = 3,
         saveTimeout     = 5.0,
-        pageReqTimeout  = 0.8,
+        pageReqTimeout  = 2,
     },
     crsf =
     {
         mspTransport    = "/scripts/RF2/MSP/crsf.lua",
         maxTxBufferSize = 8,
         maxRxBufferSize = 58,
-        saveMaxRetries  = 2,
+        maxRetries      = 3,
         saveTimeout     = 1.5,
-        pageReqTimeout  = 0.8,
+        pageReqTimeout  = 2,
     }
 }
 

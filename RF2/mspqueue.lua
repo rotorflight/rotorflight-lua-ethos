@@ -1,35 +1,33 @@
 local mspApiVersion =
 {
     command = 1, -- MSP_API_VERSION
-    processReply = function(s, buf)
+    processReply = function(self, buf)
         if #buf >= 3 then
             rf2.fc.apiVersion = buf[2] + buf[3] / 100
-            print(rf2.fc.apiVersion)
-            return true
+            print("API version: "..rf2.fc.apiVersion)
         end
-        return false
     end,
-    exampleResponse = { 1, { 0, 12, 6 }, nil}
+    --exampleResponse = { 1, { 0, 12, 6 }, nil}
 }
 
 local mspAccCalibration =
 {
     command = 205, -- MSP_ACC_CALIBRATION
-    processReply = function(s, buf)
+    processReply = function(self, buf)
         print("Calibrated!")
-        return true
     end,
-    exampleResponse = { 205, nil, nil}
+    --exampleResponse = { 205, nil, nil}
 }
 
-local MspMessageController = {}
+local MspQueueController = {}
 
-function MspMessageController.new()
+function MspQueueController.new()
     local self = {
         messageQueue = {},
         currentMessage = nil,
         lastTimeCommandSent = 0,
         retryCount = 0,
+        maxRetries = 3,
         messages = {
             MSP_API_VERSION = mspApiVersion,
             MSP_ACC_CALIBRATION = mspAccCalibration
@@ -73,7 +71,7 @@ function MspMessageController.new()
                 self.currentMessage:processReply(buf)
             end
             self.currentMessage = nil
-        elseif self.retryCount == 3 then
+        elseif self.retryCount == self.maxRetries then
             self.currentMessage = nil
         end
     end
@@ -91,26 +89,24 @@ function MspMessageController.new()
     return self
 end
 
-return MspMessageController.new()
+return MspQueueController.new()
 
 --[[
 local mspCustom =
 {
-    command = 111, --
-    processReply = function(s, buf)
-        print("Custom!")
-        return true
+    command = 111,
+    processReply = function(self, buf)
+        print("Do something with the response!")
     end,
     exampleResponse = { 111, nil, nil}
 }
 
-
-local mmc = MspMessageController.new()
-mmc
+local myMspQueue = MspQueueController.new()
+myMspQueue
   :add("MSP_API_VERSION")
   :add("MSP_ACC_CALIBRATION")
   :addCustom(mspCustom)
 
-while mmc:processMessageQueue() do end
+while myMspQueue:process() do end
 --]]
 

@@ -10,12 +10,12 @@ local function init()
 
     if returnTable.t ~= "Waiting for API version" then
         returnTable.t = "Waiting for API version"
-        rf2.mspController:add("MSP_API_VERSION")
+        rf2.mspQueue:add("MSP_API_VERSION")
     end
 
-    rf2.mspController:processQueue() // TODO: to wakeup
+    rf2.mspQueue:processQueue() -- TODO: to wakeup
 
-    if rf2.mspController:isReady() then
+    if rf2.mspQueue:isReady() then
         if tostring(rf2.fc.apiVersion) ~= SUPPORTED_API_VERSION then -- work-around for comparing floats
             returnTable.t = "This version of the Lua scripts ("..SUPPORTED_API_VERSION..")\ncan't be used with the selected model ("..tostring(rf2.fc.apiVersion)..")."
         else
