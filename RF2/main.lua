@@ -59,7 +59,9 @@ rf2 = {
     lastChangedServo = 1,
     protocol = nil,
     radio = nil,
-    fc = {},
+    FC = {
+        CONFIG = {}
+    },
     mspQueue = nil,
     sensor = nil,
     dataBindFields = function()
@@ -81,6 +83,7 @@ rf2 = {
                 end
             end
         end
+        lcdNeedsInvalidate = true
     end,
 
     -- OpenTX <-> Ethos mapping functions
@@ -145,9 +148,9 @@ end
 local function rebootFc()
     print("Attempting to reboot the FC...")
     pageState = pageStatus.rebooting
-    rf2.mspQueue:addCustom({
+    rf2.mspQueue:addCustomMessage({
         command = 68, -- MSP_REBOOT
-        processReply = function(self, buf)
+        onProcessed = function(self, buf)
             invalidatePages()
         end
     })
@@ -156,7 +159,7 @@ end
 local mspEepromWrite =
 {
     command = 250, -- MSP_EEPROM_WRITE, fails when armed
-    processReply = function(self, buf)
+    onProcessed = function(self, buf)
         if Page.reboot then
             rebootFc()
         end
@@ -166,13 +169,13 @@ local mspEepromWrite =
 
 local mspSaveSettings =
 {
-    processReply = function(self, buf)
+    onProcessed = function(self, buf)
         -- check if this page requires writing to eeprom to save (most do)
         if Page and Page.eepromWrite then
             -- don't write again if we're already responding to earlier page.write()s
             if pageState ~= pageStatus.eepromWrite then
                 pageState = pageStatus.eepromWrite
-                rf2.mspQueue:addCustom(mspEepromWrite)
+                rf2.mspQueue:addCustomMessage(mspEepromWrite)
             end
         elseif pageState ~= pageStatus.eepromWrite then
             -- If we're not already trying to write to eeprom from a previous save, then we're done.
@@ -192,7 +195,7 @@ local function saveSettings()
             pageState = pageStatus.saving
             mspSaveSettings.command = Page.write
             mspSaveSettings.payload = payload
-            rf2.mspQueue:addCustom(mspSaveSettings)
+            rf2.mspQueue:addCustomMessage(mspSaveSettings)
             print("Attempting to write page values...")
         end
     end
@@ -210,7 +213,7 @@ end
 
 local mspLoadSettings =
 {
-    processReply = function(self, buf)
+    onProcessed = function(self, buf)
         print("Page is processing reply for cmd "..tostring(self.command).." len buf: "..#buf.." expected: "..Page.minBytes)
         Page.values = buf
         if Page.postRead then
@@ -225,10 +228,14 @@ local mspLoadSettings =
 }
 
 local function requestPage()
+    if Page and Page.prepare then
+        Page.prepare(Page)
+        Page.prepare = nil
+    end
     if Page.read and (not Page.reqTS or Page.reqTS + requestTimeout <= os.clock()) then
         Page.reqTS = os.clock()
         mspLoadSettings.command = Page.read
-        rf2.mspQueue:addCustom(mspLoadSettings)
+        rf2.mspQueue:addCustomMessage(mspLoadSettings)
     end
 end
 
@@ -344,7 +351,7 @@ local function create()
     init = nil
     popupMenu = nil
     lastEvent = nil
-    rf2.fc.apiVersion = 0
+    rf2.FC.CONFIG.apiVersion = 0
     callCreate = false
 
     return {}

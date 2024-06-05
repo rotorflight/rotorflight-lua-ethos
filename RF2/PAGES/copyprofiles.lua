@@ -18,7 +18,7 @@ labels[#labels + 1] = { t = "Use Save to copy the source", x = x, y = inc.y(line
 labels[#labels + 1] = { t = "profile to the destination.", x = x, y = inc.y(lineSpacing) }
 
 return {
-    read        = 101, -- MSP_STATUS
+    read        = nil,
     write       = 183, -- MSP_COPY_PROFILE
     reboot      = false,
     eepromWrite = true,
@@ -26,18 +26,20 @@ return {
     minBytes    = 30,
     labels      = labels,
     fields      = fields,
-    postRead = function(self)
-        self.maxPidProfiles = self.values[25]
-        self.currentPidProfile = self.values[24]
-        self.values = { 0, self.getDestinationPidProfile(self), self.currentPidProfile }
+    prepare = function(self)
+        rf2.mspQueue:add("MSP_STATUS", self.onProcessedMspStatus, self)
+    end,
+    onProcessedMspStatus = function(self)
+        self.values = { 0, self.getDestinationPidProfile(self), rf2.FC.CONFIG.profile }
         self.minBytes = 3
+        rf2.dataBindFields()
     end,
     getDestinationPidProfile = function(self)
         local destPidProfile
-        if (self.currentPidProfile < self.maxPidProfiles - 1) then
-            destPidProfile = self.currentPidProfile + 1
+        if (rf2.FC.CONFIG.profile < rf2.FC.CONFIG.numProfiles - 1) then
+            destPidProfile = rf2.FC.CONFIG.profile + 1
         else
-            destPidProfile = self.currentPidProfile - 1
+            destPidProfile = rf2.FC.CONFIG.profile - 1
         end
         return destPidProfile
     end,

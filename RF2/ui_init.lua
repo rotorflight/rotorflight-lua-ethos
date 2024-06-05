@@ -16,8 +16,8 @@ local function init()
     rf2.mspQueue:processQueue()
 
     if rf2.mspQueue:isProcessed() then
-        if tostring(rf2.fc.apiVersion) ~= SUPPORTED_API_VERSION then -- work-around for comparing floats
-            returnTable.t = "This version of the Lua scripts ("..SUPPORTED_API_VERSION..")\ncan't be used with the selected model ("..tostring(rf2.fc.apiVersion)..")."
+        if tostring(rf2.FC.CONFIG.apiVersion) ~= SUPPORTED_API_VERSION then -- work-around for comparing floats
+            returnTable.t = "This version of the Lua scripts ("..SUPPORTED_API_VERSION..")\ncan't be used with the selected model ("..tostring(rf2.FC.CONFIG.apiVersion)..")."
         else
             -- received correct API version, proceed
             return true
