@@ -95,6 +95,7 @@ function MspQueueController:processQueue()
     local cmd, buf, err = returnExampleTuple(self.currentMessage.exampleResponse)
     --]]
 
+    -- 68 = MSP_REBOOT
     if (cmd == self.currentMessage.command and not err) or (self.currentMessage.command == 68 and self.retryCount == 2) then
         if self.currentMessage.processReply then
             self.currentMessage:processReply(buf)

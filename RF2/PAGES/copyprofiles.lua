@@ -23,15 +23,15 @@ return {
     reboot      = false,
     eepromWrite = true,
     title       = "Copy",
-    minBytes    = 30,
+    minBytes    = 3,
     labels      = labels,
     fields      = fields,
     prepare = function(self)
         rf2.mspQueue:add("MSP_STATUS", self.onProcessedMspStatus, self)
     end,
     onProcessedMspStatus = function(self)
+        -- prepare page for MSP_COPY_PROFILE
         self.values = { 0, self.getDestinationPidProfile(self), rf2.FC.CONFIG.profile }
-        self.minBytes = 3
         rf2.dataBindFields()
     end,
     getDestinationPidProfile = function(self)

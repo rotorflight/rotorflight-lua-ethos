@@ -11,8 +11,32 @@ local inc = { x = function(val) x = x + val return x end, y = function(val) y = 
 local labels = {}
 local fields = {}
 
-fields[#fields + 1] = { t = "Servo",         x = x,          y = inc.y(lineSpacing), sp = x + sp, min = 0, max = 7, vals = { 1 }, table = { [0] = "ELEVATOR", "CYCL L", "CYCL R", "TAIL" }, postEdit = function(self) self.servoChanged(self) end }
-fields[#fields + 1] = { t = "Center",        x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 50, max = 2250, vals = { 2,3 } }
+local onPreEdit = function(self, page)
+    rf2.mspQueue:addCustomMessage({
+        command = 193, -- MSP_SET_SERVO_OVERRIDE,
+        payload = { page.values[1], 0, 0 }
+    })
+end
+
+local onCenterChanged = function(self, page)
+    if not self.lastTimeSet or self.lastTimeSet + 50 < rf2.getTime() then
+        rf2.mspQueue:addCustomMessage( {
+            command = 212, -- MSP_SET_SERVO_CONFIGURATION
+            payload = page.values
+        })
+        self.lastTimeSet = rf2.getTime()
+    end
+end
+
+local onPostEdit = function(self, page)
+    rf2.mspQueue:addCustomMessage( {
+        command = 193, -- MSP_SET_SERVO_OVERRIDE
+        payload = { page.values[1], 7, 209 } -- TODO: 2001
+    })
+end
+
+fields[#fields + 1] = { t = "Servo",         x = x,          y = inc.y(lineSpacing), sp = x + sp, min = 0, max = 7, vals = { 1 }, table = { [0] = "ELEVATOR", "CYCL L", "CYCL R", "TAIL" }, postEdit = function(self, page) page.servoChanged(page) end }
+fields[#fields + 1] = { t = "Center",        x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 50, max = 2250, vals = { 2,3 }, preEdit = onPreEdit, onChange = onCenterChanged, postEdit = onPostEdit }
 fields[#fields + 1] = { t = "Min",           x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = -1000, max = 1000, vals = { 4,5 } }
 fields[#fields + 1] = { t = "Max",           x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = -1000, max = 1000, vals = { 6,7 } }
 fields[#fields + 1] = { t = "Scale neg",     x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 100, max = 1000, vals = { 8,9 } }

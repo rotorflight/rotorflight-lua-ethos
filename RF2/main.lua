@@ -150,7 +150,7 @@ local function rebootFc()
     pageState = pageStatus.rebooting
     rf2.mspQueue:addCustomMessage({
         command = 68, -- MSP_REBOOT
-        onProcessed = function(self, buf)
+        processReply = function(self, buf)
             invalidatePages()
         end
     })
@@ -159,7 +159,7 @@ end
 local mspEepromWrite =
 {
     command = 250, -- MSP_EEPROM_WRITE, fails when armed
-    onProcessed = function(self, buf)
+    processReply = function(self, buf)
         if Page.reboot then
             rebootFc()
         end
@@ -169,7 +169,7 @@ local mspEepromWrite =
 
 local mspSaveSettings =
 {
-    onProcessed = function(self, buf)
+    processReply = function(self, buf)
         -- check if this page requires writing to eeprom to save (most do)
         if Page and Page.eepromWrite then
             -- don't write again if we're already responding to earlier page.write()s
@@ -213,7 +213,7 @@ end
 
 local mspLoadSettings =
 {
-    onProcessed = function(self, buf)
+    processReply = function(self, buf)
         print("Page is processing reply for cmd "..tostring(self.command).." len buf: "..#buf.." expected: "..Page.minBytes)
         Page.values = buf
         if Page.postRead then
@@ -228,9 +228,9 @@ local mspLoadSettings =
 }
 
 local function requestPage()
-    if Page and Page.prepare then
-        Page.prepare(Page)
-        Page.prepare = nil
+    if Page and Page.onLoad then
+        Page.onLoad(Page)
+        Page.onLoad = nil
     end
     if Page.read and (not Page.reqTS or Page.reqTS + requestTimeout <= os.clock()) then
         Page.reqTS = os.clock()
@@ -285,8 +285,8 @@ local function incValue(inc)
     for idx=1, #f.vals do
         Page.values[f.vals[idx]] = math.floor(f.value*scale + 0.5)>>((idx-1)*8)
     end
-    if f.upd and Page.values then
-        f.upd(Page)
+    if f.onChange then
+        f:onChange(Page)
     end
 end
 
@@ -467,6 +467,9 @@ local function wakeup(widget)
                     local f = Page.fields[currentField]
                     if Page.values and f.vals and Page.values[f.vals[#f.vals]] and not f.ro then
                         pageState = pageStatus.editing
+                        if Page.fields[currentField].preEdit then
+                            Page.fields[currentField]:preEdit(Page)
+                        end
                         lcdNeedsInvalidate = true
                     end
                 end
@@ -485,7 +488,7 @@ local function wakeup(widget)
         elseif pageState == pageStatus.editing then
             if ((lastEvent == EVT_VIRTUAL_EXIT) or (lastEvent == EVT_VIRTUAL_ENTER)) then
                 if Page.fields[currentField].postEdit then
-                    Page.fields[currentField].postEdit(Page)
+                    Page.fields[currentField]:postEdit(Page)
                 end
                 pageState = pageStatus.display
 				lcdNeedsInvalidate = true
@@ -597,9 +600,6 @@ local function drawScreen()
         for i=1,#Page.fields do
             local f = Page.fields[i]
             if f.value then
-                if f.upd and Page.values then
-                    f.upd(Page)
-                end
                 val = f.value
                 if f.table and f.table[f.value] then
                     val = f.table[f.value]
