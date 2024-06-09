@@ -228,14 +228,15 @@ local mspLoadSettings =
 }
 
 local function requestPage()
-    if Page and Page.onLoad then
-        Page.onLoad(Page)
-        Page.onLoad = nil
-    end
-    if Page.read and (not Page.reqTS or Page.reqTS + requestTimeout <= os.clock()) then
+    if not Page.reqTS or Page.reqTS + requestTimeout <= os.clock() then
         Page.reqTS = os.clock()
-        mspLoadSettings.command = Page.read
-        rf2.mspQueue:addCustomMessage(mspLoadSettings)
+        if Page.preLoad then
+            Page.preLoad(Page)
+        end
+        if Page.read then
+            mspLoadSettings.command = Page.read
+            rf2.mspQueue:addCustomMessage(mspLoadSettings)
+        end
     end
 end
 
@@ -285,8 +286,8 @@ local function incValue(inc)
     for idx=1, #f.vals do
         Page.values[f.vals[idx]] = math.floor(f.value*scale + 0.5)>>((idx-1)*8)
     end
-    if f.onChange then
-        f:onChange(Page)
+    if f.change then
+        f:change(Page)
     end
 end
 

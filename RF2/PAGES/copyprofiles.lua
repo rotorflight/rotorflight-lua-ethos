@@ -26,12 +26,13 @@ return {
     minBytes    = 3,
     labels      = labels,
     fields      = fields,
-    prepare = function(self)
+    preLoad = function(self)
         rf2.mspQueue:add("MSP_STATUS", self.onProcessedMspStatus, self)
     end,
-    onProcessedMspStatus = function(self)
+    onProcessedMspStatus = function(message, page)
         -- prepare page for MSP_COPY_PROFILE
-        self.values = { 0, self.getDestinationPidProfile(self), rf2.FC.CONFIG.profile }
+        --print("Processed command "..tostring(message.command))
+        page.values = { 0, page.getDestinationPidProfile(page), rf2.FC.CONFIG.profile }
         rf2.dataBindFields()
     end,
     getDestinationPidProfile = function(self)

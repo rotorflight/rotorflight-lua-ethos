@@ -12,9 +12,11 @@ local mspApiVersion =
     processReply = function(self, buf)
         if #buf >= 3 then
             rf2.FC.CONFIG.apiVersion = buf[2] + buf[3] / 100
-            print("API version: "..rf2.FC.CONFIG.apiVersion)
         end
     end,
+    onProcessed = function(self)
+        print("API version: "..rf2.FC.CONFIG.apiVersion)
+    end
     --exampleResponse = { 1, { 0, 12, 6 }, nil}
 }
 
@@ -89,6 +91,7 @@ function MspQueueController:processQueue()
 
     mspProcessTxQ()
     local cmd, buf, err = mspPollReply()
+    if cmd then print("Received cmd: "..tostring(cmd)) end
 
     --[[
     local returnExampleTuple = function(table) return table[1], table[2], table[3] end
@@ -101,7 +104,7 @@ function MspQueueController:processQueue()
             self.currentMessage:processReply(buf)
         end
         if self.currentMessage.onProcessed then
-            self.currentMessage.onProcessed(self.currentMessage.onProcessedParameter)
+            self.currentMessage:onProcessed(self.currentMessage.onProcessedParameter)
         end
         self.currentMessage = nil
     elseif self.retryCount == self.maxRetries then

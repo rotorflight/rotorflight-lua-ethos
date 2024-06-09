@@ -36,7 +36,7 @@ local onPostEdit = function(self, page)
 end
 
 fields[#fields + 1] = { t = "Servo",         x = x,          y = inc.y(lineSpacing), sp = x + sp, min = 0, max = 7, vals = { 1 }, table = { [0] = "ELEVATOR", "CYCL L", "CYCL R", "TAIL" }, postEdit = function(self, page) page.servoChanged(page) end }
-fields[#fields + 1] = { t = "Center",        x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 50, max = 2250, vals = { 2,3 }, preEdit = onPreEdit, onChange = onCenterChanged, postEdit = onPostEdit }
+fields[#fields + 1] = { t = "Center",        x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 50, max = 2250, vals = { 2,3 }, preEdit = onPreEdit, change = onCenterChanged, postEdit = onPostEdit }
 fields[#fields + 1] = { t = "Min",           x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = -1000, max = 1000, vals = { 4,5 } }
 fields[#fields + 1] = { t = "Max",           x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = -1000, max = 1000, vals = { 6,7 } }
 fields[#fields + 1] = { t = "Scale neg",     x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 100, max = 1000, vals = { 8,9 } }
