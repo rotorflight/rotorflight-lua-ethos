@@ -6,6 +6,32 @@ local function readU32(buf, offset)
     return value
 end
 
+local function writeU16(buf, value)
+    local byte1 = (value >> 8) & 0xFF
+    local byte2 = value & 0xFF
+    table.insert(buf, byte1)
+    table.insert(buf, byte2)
+end
+
+rf2.mspHelper = {
+    disableServoOverride = function(servoIndex)
+        payload = { servoIndex }
+        writeU16(payload, 2001)
+        rf2.mspQueue:addCustomMessage( {
+            command = 193, -- MSP_SET_SERVO_OVERRIDE
+            payload = payload
+        })
+    end,
+    enableServoOverride = function(servoIndex)
+        local message = {
+            command = 193, -- MSP_SET_SERVO_OVERRIDE
+            payload = { servoIndex }
+        }
+        writeU16(message.payload, 0)
+        rf2.mspQueue:addCustomMessage(message)
+    end
+}
+
 local mspApiVersion =
 {
     command = 1, -- MSP_API_VERSION

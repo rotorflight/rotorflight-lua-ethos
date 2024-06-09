@@ -12,10 +12,7 @@ local labels = {}
 local fields = {}
 
 local onPreEdit = function(self, page)
-    rf2.mspQueue:addCustomMessage({
-        command = 193, -- MSP_SET_SERVO_OVERRIDE,
-        payload = { page.values[1], 0, 0 }
-    })
+    rf2.mspHelper.enableServoOverride(page.values[1])
 end
 
 local onCenterChanged = function(self, page)
@@ -29,10 +26,7 @@ local onCenterChanged = function(self, page)
 end
 
 local onPostEdit = function(self, page)
-    rf2.mspQueue:addCustomMessage( {
-        command = 193, -- MSP_SET_SERVO_OVERRIDE
-        payload = { page.values[1], 7, 209 } -- TODO: 2001
-    })
+    rf2.mspHelper.disableServoOverride(page.values[1])
 end
 
 fields[#fields + 1] = { t = "Servo",         x = x,          y = inc.y(lineSpacing), sp = x + sp, min = 0, max = 7, vals = { 1 }, table = { [0] = "ELEVATOR", "CYCL L", "CYCL R", "TAIL" }, postEdit = function(self, page) page.servoChanged(page) end }
