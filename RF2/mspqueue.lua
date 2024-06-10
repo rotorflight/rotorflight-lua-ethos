@@ -1,20 +1,5 @@
-local function readU32(buf, offset)
-    local value = 0
-    for i = 0, 3 do
-        value = value | buf[offset + i] << (i * 8)
-    end
-    return value
-end
-
-local function writeU16(buf, value)
-    local byte1 = (value >> 8) & 0xFF
-    local byte2 = value & 0xFF
-    table.insert(buf, byte1)
-    table.insert(buf, byte2)
-end
-
 rf2.mspHelper = {
-    readU16 = function (buf, offset)
+    readU16 = function(buf, offset)
         --print(tostring(offset))
         local value = 0
         for i = 0, 1 do
@@ -22,7 +7,7 @@ rf2.mspHelper = {
         end
         return value
     end,
-    readI16 = function (buf, offset)
+    readI16 = function(buf, offset)
         --print(tostring(offset))
         local value = 0
         for i = 0, 1 do
@@ -31,10 +16,22 @@ rf2.mspHelper = {
         if value & (1 << 15) ~= 0 then value = value - (2 ^ 16) end
         return value
     end,
-
+    readU32 = function(buf, offset)
+        local value = 0
+        for i = 0, 3 do
+            value = value | buf[offset + i] << (i * 8)
+        end
+        return value
+    end,
+    writeU16 = function(buf, value)
+        local byte1 = (value >> 8) & 0xFF
+        local byte2 = value & 0xFF
+        table.insert(buf, byte1)
+        table.insert(buf, byte2)
+    end,
     disableServoOverride = function(servoIndex)
         payload = { servoIndex }
-        writeU16(payload, 2001)
+        rf2.mspHelper.writeU16(payload, 2001)
         rf2.mspQueue:add( {
             command = 193, -- MSP_SET_SERVO_OVERRIDE
             payload = payload
@@ -45,7 +42,7 @@ rf2.mspHelper = {
             command = 193, -- MSP_SET_SERVO_OVERRIDE
             payload = { servoIndex }
         }
-        writeU16(message.payload, 0)
+        rf2.mspHelper.writeU16(message.payload, 0)
         rf2.mspQueue:add(message)
     end
 }
@@ -68,7 +65,7 @@ local mspStatus =
 {
     command = 101, -- MSP_STATUS
     processReply = function(self, buf)
-        rf2.FC.CONFIG.armingDisableFlags = readU32(buf, 18)
+        rf2.FC.CONFIG.armingDisableFlags = rf2.mspHelper.readU32(buf, 18)
         print("Arming disable flags: "..tostring(rf2.FC.CONFIG.armingDisableFlags))
         rf2.FC.CONFIG.profile = buf[24]
         rf2.FC.CONFIG.numProfiles = buf[25]
