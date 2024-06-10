@@ -148,7 +148,7 @@ end
 local function rebootFc()
     print("Attempting to reboot the FC...")
     pageState = pageStatus.rebooting
-    rf2.mspQueue:addCustomMessage({
+    rf2.mspQueue:add({
         command = 68, -- MSP_REBOOT
         processReply = function(self, buf)
             invalidatePages()
@@ -175,7 +175,7 @@ local mspSaveSettings =
             -- don't write again if we're already responding to earlier page.write()s
             if pageState ~= pageStatus.eepromWrite then
                 pageState = pageStatus.eepromWrite
-                rf2.mspQueue:addCustomMessage(mspEepromWrite)
+                rf2.mspQueue:add(mspEepromWrite)
             end
         elseif pageState ~= pageStatus.eepromWrite then
             -- If we're not already trying to write to eeprom from a previous save, then we're done.
@@ -195,7 +195,7 @@ local function saveSettings()
             pageState = pageStatus.saving
             mspSaveSettings.command = Page.write
             mspSaveSettings.payload = payload
-            rf2.mspQueue:addCustomMessage(mspSaveSettings)
+            rf2.mspQueue:add(mspSaveSettings)
             print("Attempting to write page values...")
         end
     end
@@ -230,12 +230,13 @@ local mspLoadSettings =
 local function requestPage()
     if not Page.reqTS or Page.reqTS + requestTimeout <= os.clock() then
         Page.reqTS = os.clock()
-        if Page.preLoad then
-            Page.preLoad(Page)
-        end
         if Page.read then
-            mspLoadSettings.command = Page.read
-            rf2.mspQueue:addCustomMessage(mspLoadSettings)
+            if type(Page.read) == "function" then
+                Page.read(Page)
+            else
+                mspLoadSettings.command = Page.read
+                rf2.mspQueue:add(mspLoadSettings)
+            end
         end
     end
 end

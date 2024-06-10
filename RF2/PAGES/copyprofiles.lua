@@ -18,7 +18,10 @@ labels[#labels + 1] = { t = "Use Save to copy the source", x = x, y = inc.y(line
 labels[#labels + 1] = { t = "profile to the destination.", x = x, y = inc.y(lineSpacing) }
 
 return {
-    read        = nil,
+    --read        = nil,
+    read = function(self)
+        rf2.mspQueue:add("MSP_STATUS", self.onProcessedMspStatus, self)
+    end,
     write       = 183, -- MSP_COPY_PROFILE
     reboot      = false,
     eepromWrite = true,
@@ -26,9 +29,6 @@ return {
     minBytes    = 3,
     labels      = labels,
     fields      = fields,
-    preLoad = function(self)
-        rf2.mspQueue:add("MSP_STATUS", self.onProcessedMspStatus, self)
-    end,
     onProcessedMspStatus = function(message, page)
         -- prepare page for MSP_COPY_PROFILE
         --print("Processed command "..tostring(message.command))

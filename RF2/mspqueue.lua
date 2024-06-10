@@ -14,10 +14,28 @@ local function writeU16(buf, value)
 end
 
 rf2.mspHelper = {
+    readU16 = function (buf, offset)
+        --print(tostring(offset))
+        local value = 0
+        for i = 0, 1 do
+            value = value | buf[offset + i] << (i * 8)
+        end
+        return value
+    end,
+    readI16 = function (buf, offset)
+        --print(tostring(offset))
+        local value = 0
+        for i = 0, 1 do
+            value = value | buf[offset + i] << (i * 8)
+        end
+        if value & (1 << 15) ~= 0 then value = value - (2 ^ 16) end
+        return value
+    end,
+
     disableServoOverride = function(servoIndex)
         payload = { servoIndex }
         writeU16(payload, 2001)
-        rf2.mspQueue:addCustomMessage( {
+        rf2.mspQueue:add( {
             command = 193, -- MSP_SET_SERVO_OVERRIDE
             payload = payload
         })
@@ -28,7 +46,7 @@ rf2.mspHelper = {
             payload = { servoIndex }
         }
         writeU16(message.payload, 0)
-        rf2.mspQueue:addCustomMessage(message)
+        rf2.mspQueue:add(message)
     end
 }
 
@@ -140,15 +158,15 @@ end
 
 -- onProcessed and onProcessedParameter are optional parameters
 function MspQueueController:add(message, onProcessed, onProcessedParameter)
-    if onProcessed then
-        self.messages[message].onProcessed = onProcessed
-        self.messages[message].onProcessedParameter = onProcessedParameter
+    if type(message) == "string" then
+        message = self.messages[message]
     end
-    table.insert(self.messageQueue, self.messages[message])
-    return self
-end
 
-function MspQueueController:addCustomMessage(message)
+    if onProcessed then
+        message.onProcessed = onProcessed
+        message.onProcessedParameter = onProcessedParameter
+    end
+
     table.insert(self.messageQueue, message)
     return self
 end
@@ -172,7 +190,7 @@ local myMspQueue = MspQueueController.new()
 myMspQueue
   :add("MSP_API_VERSION")
   :add("MSP_ACC_CALIBRATION")
-  :addCustomMessage(mspCustom)
+  :add(mspCustom)
 
 while not myMspQueue:isProcessed() do
     myMspQueue:processQueue()
