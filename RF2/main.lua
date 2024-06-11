@@ -43,8 +43,6 @@ local enterEvent = nil
 local enterEventTime
 local callCreate = true
 
-local lcdNeedsInvalidate = false
-
 --- Virtual key translations from Ethos to OpenTX
 local EVT_VIRTUAL_ENTER = 32
 local EVT_VIRTUAL_ENTER_LONG = 129
@@ -56,7 +54,7 @@ local MENU_TITLE_BGCOLOR, ITEM_TEXT_SELECTED, ITEM_TEXT_NORMAL, ITEM_TEXT_EDITIN
 
 -- All RF2 globals should be stored in the rf2 table, to avoid conflict with globals from other scripts.
 rf2 = {
-    lastChangedServo = 1,
+    lastChangedServo = 0,
     protocol = nil,
     radio = nil,
     FC = {
@@ -64,6 +62,7 @@ rf2 = {
     },
     mspQueue = nil,
     sensor = nil,
+    lcdNeedsInvalidate = false,
     dataBindFields = function()
         for i=1,#Page.fields do
             if #Page.values >= Page.minBytes then
@@ -83,7 +82,7 @@ rf2 = {
                 end
             end
         end
-        lcdNeedsInvalidate = true
+        rf2.lcdNeedsInvalidate = true
     end,
 
     -- OpenTX <-> Ethos mapping functions
@@ -142,7 +141,7 @@ local function invalidatePages()
     Page = nil
     pageState = pageStatus.display
     collectgarbage()
-    lcdNeedsInvalidate = true
+    rf2.lcdNeedsInvalidate = true
 end
 
 local function rebootFc()
@@ -181,7 +180,7 @@ local mspSaveSettings =
             -- If we're not already trying to write to eeprom from a previous save, then we're done.
             invalidatePages()
         end
-        lcdNeedsInvalidate = true
+        rf2.lcdNeedsInvalidate = true
     end
 }
 
@@ -207,7 +206,7 @@ local function confirm(page)
     invalidatePages()
     currentField = 1
     Page = assert(rf2.loadScript(page))()
-    lcdNeedsInvalidate = true
+    rf2.lcdNeedsInvalidate = true
     collectgarbage()
 end
 
@@ -223,7 +222,7 @@ local mspLoadSettings =
         if Page.postLoad then
             Page.postLoad(Page)
         end
-        lcdNeedsInvalidate = true
+        rf2.lcdNeedsInvalidate = true
     end
 }
 
@@ -284,8 +283,10 @@ local function incValue(inc)
     local mult = f.mult or 1
     f.value = clipValue(f.value + inc*mult/scale, (f.min or 0)/scale, (f.max or 255)/scale)
     f.value = math.floor(f.value*scale/mult + 0.5)*mult/scale
-    for idx=1, #f.vals do
-        Page.values[f.vals[idx]] = math.floor(f.value*scale + 0.5)>>((idx-1)*8)
+    if Page.values then
+        for idx=1, #f.vals do
+            Page.values[f.vals[idx]] = math.floor(f.value*scale + 0.5)>>((idx-1)*8)
+        end
     end
     if f.change then
         f:change(Page)
@@ -304,7 +305,7 @@ local function updateTelemetryState()
     end
 
     if oldTelemetryState ~= telemetryState then
-        lcdNeedsInvalidate = true
+        rf2.lcdNeedsInvalidate = true
     end
 end
 
@@ -387,17 +388,17 @@ local function wakeup(widget)
     if popupMenu then
         if lastEvent == EVT_VIRTUAL_EXIT then
             popupMenu = nil
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_PREV then
             incPopupMenu(-1)
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_NEXT then
             incPopupMenu(1)
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_ENTER then
             popupMenu[popupMenuActive].f()
             popupMenu = nil
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
         end
     elseif uiState == uiStatus.init then
         screenTitle = "Rotorflight "..LUA_VERSION
@@ -437,48 +438,48 @@ local function wakeup(widget)
             return 0
         elseif lastEvent == EVT_VIRTUAL_NEXT then
             incMainMenu(1)
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_PREV then
             incMainMenu(-1)
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_ENTER then
             prevUiState = uiStatus.mainMenu
             uiState = uiStatus.pages
             pageState = pageStatus.display  -- added in case we reboot from popup over main menu
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_ENTER_LONG then
             print("Popup from main menu")
             createPopupMenu()
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
         end
     elseif uiState == uiStatus.pages then
         if prevUiState ~= uiState then
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
             prevUiState = uiState
         end
 
         if pageState == pageStatus.display then
             if lastEvent == EVT_VIRTUAL_PREV then
                 incField(-1)
-                lcdNeedsInvalidate = true
+                rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_NEXT then
                 incField(1)
-                lcdNeedsInvalidate = true
+                rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_ENTER then
                 if Page then
                     local f = Page.fields[currentField]
-                    if Page.values and f.vals and Page.values[f.vals[#f.vals]] and not f.ro then
+                    if (Page.isReady or (Page.values and f.vals and Page.values[f.vals[#f.vals]])) and not f.ro then
                         pageState = pageStatus.editing
                         if Page.fields[currentField].preEdit then
                             Page.fields[currentField]:preEdit(Page)
                         end
-                        lcdNeedsInvalidate = true
+                        rf2.lcdNeedsInvalidate = true
                     end
                 end
             elseif lastEvent == EVT_VIRTUAL_ENTER_LONG then
                 print("Popup from page")
                 createPopupMenu()
-                lcdNeedsInvalidate = true
+                rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_EXIT then
                 invalidatePages()
                 currentField = 1
@@ -493,20 +494,20 @@ local function wakeup(widget)
                     Page.fields[currentField]:postEdit(Page)
                 end
                 pageState = pageStatus.display
-				lcdNeedsInvalidate = true
+				rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_NEXT then
                 incValue(1)
-				lcdNeedsInvalidate = true
+				rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_PREV then
                 incValue(-1)
-				lcdNeedsInvalidate = true
+				rf2.lcdNeedsInvalidate = true
             end
         end
         if not Page then
             Page = assert(rf2.loadScript("/scripts/RF2/PAGES/"..PageFiles[currentPage].script))()
             collectgarbage()
         end
-        if not Page.values and pageState == pageStatus.display then
+        if not(Page.values or Page.isReady) and pageState == pageStatus.display then
             requestPage()
         end
     elseif uiState == uiStatus.confirm then
@@ -527,8 +528,8 @@ local function wakeup(widget)
 
     lastEvent = nil
 
-    if lcdNeedsInvalidate == true then
-        lcdNeedsInvalidate = false
+    if rf2.lcdNeedsInvalidate == true then
+        rf2.lcdNeedsInvalidate = false
         lcd.invalidate()
     end
 
