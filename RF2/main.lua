@@ -166,37 +166,45 @@ local mspEepromWrite =
     end
 }
 
+rf2.settingsSaved = function()
+    -- check if this page requires writing to eeprom to save (most do)
+    if Page and Page.eepromWrite then
+        -- don't write again if we're already responding to earlier page.write()s
+        if pageState ~= pageStatus.eepromWrite then
+            pageState = pageStatus.eepromWrite
+            rf2.mspQueue:add(mspEepromWrite)
+        end
+    elseif pageState ~= pageStatus.eepromWrite then
+        -- If we're not already trying to write to eeprom from a previous save, then we're done.
+        invalidatePages()
+    end
+    rf2.lcdNeedsInvalidate = true
+end
+
 local mspSaveSettings =
 {
     processReply = function(self, buf)
-        -- check if this page requires writing to eeprom to save (most do)
-        if Page and Page.eepromWrite then
-            -- don't write again if we're already responding to earlier page.write()s
-            if pageState ~= pageStatus.eepromWrite then
-                pageState = pageStatus.eepromWrite
-                rf2.mspQueue:add(mspEepromWrite)
-            end
-        elseif pageState ~= pageStatus.eepromWrite then
-            -- If we're not already trying to write to eeprom from a previous save, then we're done.
-            invalidatePages()
-        end
-        rf2.lcdNeedsInvalidate = true
+        rf2.settingsSaved()
     end
 }
 
 local function saveSettings()
-    if Page.values then
-        local payload = Page.values
-        if Page.preSave then
-            payload = Page.preSave(Page)
-        end
-        if pageState ~= pageStatus.saving then
-            pageState = pageStatus.saving
+    if pageState ~= pageStatus.saving then
+        pageState = pageStatus.saving
+
+        if Page.values then
+            local payload = Page.values
+            --if Page.preSave then
+            --    payload = Page.preSave(Page)
+            --end
             mspSaveSettings.command = Page.write
             mspSaveSettings.payload = payload
             rf2.mspQueue:add(mspSaveSettings)
-            print("Attempting to write page values...")
+        elseif type(Page.write) == "function" then
+            Page.write(Page)
         end
+
+        rf2.lcdNeedsInvalidate = true
     end
 end
 

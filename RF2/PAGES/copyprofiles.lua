@@ -18,7 +18,6 @@ labels[#labels + 1] = { t = "Use Save to copy the source", x = x, y = inc.y(line
 labels[#labels + 1] = { t = "profile to the destination.", x = x, y = inc.y(lineSpacing) }
 
 return {
-    --read        = nil,
     read = function(self)
         rf2.mspQueue:add("MSP_STATUS", self.onProcessedMspStatus, self)
     end,

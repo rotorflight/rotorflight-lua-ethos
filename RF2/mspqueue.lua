@@ -1,20 +1,32 @@
 rf2.mspHelper = {
-    readU16 = function(buf, offset)
+    readU8 = function(buf)
+        local offset = buf.offset or 1
         local value = buf[offset]
-        value = value | buf[offset + 1] << 8
+        buf.offset = offset + 1
         return value
     end,
-    readI16 = function(buf, offset)
+    readU16 = function(buf)
+        local offset = buf.offset or 1
+        local value = buf[offset]
+        value = value | buf[offset + 1] << 8
+        buf.offset = offset + 2
+        return value
+    end,
+    readI16 = function(buf)
+        local offset = buf.offset or 1
         local value = buf[offset]
         value = value | buf[offset + 1] << 8
         if value & (1 << 15) ~= 0 then value = value - (2 ^ 16) end
+        buf.offset = offset + 2
         return value
     end,
-    readU32 = function(buf, offset)
+    readU32 = function(buf)
+        local offset = buf.offset or 1
         local value = 0
         for i = 0, 3 do
             value = value | buf[offset + i] << (i * 8)
         end
+        buf.offset = offset + 2
         return value
     end,
     writeU8 = function(buf, value)
@@ -66,22 +78,24 @@ local mspApiVersion =
     onProcessed = function(self)
         print("API version: "..rf2.FC.CONFIG.apiVersion)
     end
-    --exampleResponse = { 1, { 0, 12, 6 }, nil}
+    --exampleResponse = { 1, { 0, 12, 6 }, nil} -- cmd, buf, err
 }
 
 local mspStatus =
 {
     command = 101, -- MSP_STATUS
     processReply = function(self, buf)
-        rf2.FC.CONFIG.armingDisableFlags = rf2.mspHelper.readU32(buf, 18)
+        buf.offset = 18
+        rf2.FC.CONFIG.armingDisableFlags = rf2.mspHelper.readU32(buf)
         print("Arming disable flags: "..tostring(rf2.FC.CONFIG.armingDisableFlags))
-        rf2.FC.CONFIG.profile = buf[24]
-        rf2.FC.CONFIG.numProfiles = buf[25]
-        rf2.FC.CONFIG.rateProfile = buf[26]
-        rf2.FC.CONFIG.numRateProfiles = buf[27]
-        rf2.FC.CONFIG.motorCount = buf[28]
+        buf.offset = 24
+        rf2.FC.CONFIG.profile = rf2.mspHelper.readU8(buf)
+        rf2.FC.CONFIG.numProfiles = rf2.mspHelper.readU8(buf)
+        rf2.FC.CONFIG.rateProfile = rf2.mspHelper.readU8(buf)
+        rf2.FC.CONFIG.numRateProfiles = rf2.mspHelper.readU8(buf)
+        rf2.FC.CONFIG.motorCount = rf2.mspHelper.readU8(buf)
         print("Number of motors: "..tostring(rf2.FC.CONFIG.motorCount))
-        rf2.FC.CONFIG.servoCount = buf[29]
+        rf2.FC.CONFIG.servoCount = rf2.mspHelper.readU8(buf)
         print("Number of servos: "..tostring(rf2.FC.CONFIG.servoCount))
     end,
 }
@@ -94,6 +108,20 @@ local mspAccCalibration =
     end,
     --exampleResponse = { 205, nil, nil}
 }
+
+local function deepCopy(original)
+    local copy
+    if type(original) == "table" then
+        copy = {}
+        for key, value in next, original, nil do
+            copy[deepCopy(key)] = deepCopy(value)
+        end
+        setmetatable(copy, deepCopy(getmetatable(original)))
+    else -- number, string, boolean, etc
+        copy = original
+    end
+    return copy
+end
 
 -- MspQueueController class
 local MspQueueController = {}
@@ -165,6 +193,8 @@ end
 function MspQueueController:add(message, onProcessed, onProcessedParameter)
     if type(message) == "string" then
         message = self.messages[message]
+    else
+        message = deepCopy(message)
     end
 
     if onProcessed then
@@ -181,7 +211,7 @@ return MspQueueController.new()
 -- Usage example
 
 --[[
-local mspCustom =
+local mspCustomMessage =
 {
     command = 111,
     processReply = nil,
@@ -195,7 +225,7 @@ local myMspQueue = MspQueueController.new()
 myMspQueue
   :add("MSP_API_VERSION")
   :add("MSP_ACC_CALIBRATION")
-  :add(mspCustom)
+  :add(mspCustomMessage)
 
 while not myMspQueue:isProcessed() do
     myMspQueue:processQueue()
