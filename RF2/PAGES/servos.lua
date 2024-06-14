@@ -113,7 +113,7 @@ return {
         selectedServoIndex = rf2.lastChangedServo
         setValues(selectedServoIndex)
         rf2.lcdNeedsInvalidate = true
-        page.isReady = true
+        page.isReady = true -- TODO: use pageStatus instead?
     end,
     write = function(page)
         getValues(selectedServoIndex)
