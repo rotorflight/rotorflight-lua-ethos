@@ -1,4 +1,5 @@
 local template = assert(rf2.loadScript(rf2.radio.template))()
+local mspServos = assert(rf2.loadScript("/scripts/RF2/MSP/mspServos.lua"))()
 local margin = template.margin
 local indent = template.indent
 local lineSpacing = template.lineSpacing
@@ -12,48 +13,6 @@ local labels = {}
 local fields = {}
 local servos = {}
 local selectedServoIndex = 0
-
-local mspLoadSettings =
-{
-    command = 120, -- MSP_SERVO_CONFIGURATIONS
-    processReply = function(self, buf)
-        local servosCount = rf2.mspHelper.readU8(buf)
-        print("Servo count "..tostring(servosCount))
-        servos.configs = {}
-        for i = 0, servosCount-1 do
-            local config = {}
-            config.mid = rf2.mspHelper.readU16(buf)
-            config.min = rf2.mspHelper.readI16(buf)
-            config.max = rf2.mspHelper.readI16(buf)
-            config.scaleNeg = rf2.mspHelper.readU16(buf)
-            config.scalePos = rf2.mspHelper.readU16(buf)
-            config.rate = rf2.mspHelper.readU16(buf)
-            config.speed = rf2.mspHelper.readU16(buf)
-            config.flags = rf2.mspHelper.readU16(buf)
-            servos.configs[i] = config
-        end
-    end,
-}
-
-local mspSaveMessage = {
-    command = 212, -- MSP_SET_SERVO_CONFIGURATION
-    prepareMessage = function(self, servoIndex)
-        local config = servos.configs[servoIndex]
-        self.payload = {}
-        rf2.mspHelper.writeU8(self.payload, servoIndex)
-        rf2.mspHelper.writeU16(self.payload, config.mid)
-        rf2.mspHelper.writeU16(self.payload, config.min)
-        rf2.mspHelper.writeU16(self.payload, config.max)
-        rf2.mspHelper.writeU16(self.payload, config.scaleNeg)
-        rf2.mspHelper.writeU16(self.payload, config.scalePos)
-        rf2.mspHelper.writeU16(self.payload, config.rate)
-        rf2.mspHelper.writeU16(self.payload, config.speed)
-        rf2.mspHelper.writeU16(self.payload, config.flags)
-    end,
-    onProcessed = function(self)
-        print("Settings saved for servo "..tostring(selectedServoIndex))
-    end
-}
 
 local  function setValues(servoIndex)
     fields[1].value = servoIndex
@@ -79,8 +38,7 @@ end
 local onCenterChanged = function(self, page)
     if not self.lastTimeSet or self.lastTimeSet + 50 < rf2.getTime() then
         getValues(selectedServoIndex)
-        mspSaveMessage.prepareMessage(mspSaveMessage, selectedServoIndex)
-        rf2.mspQueue:add(mspSaveMessage)
+        mspServos.setServoConfiguration(selectedServoIndex, servos.configs[selectedServoIndex])
         self.lastTimeSet = rf2.getTime()
     end
 end
@@ -106,10 +64,11 @@ fields[7] = { t = "Rate",          x = x + indent, y = inc.y(lineSpacing), sp = 
 fields[8] = { t = "Speed",         x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 0, max = 60000, vals = { 14,15 } }
 
 return {
-    read = function(page)
-        rf2.mspQueue:add(mspLoadSettings, page.onProcessedReadServoConfig, page)
+    read = function(self)
+        mspServos.getServoConfigurations(self, self.processServoConfigurations)
     end,
-    onProcessedReadServoConfig = function(message, page)
+    processServoConfigurations = function(message, page)
+        servos.configs = message.reply -- TODO: don't like this
         selectedServoIndex = rf2.lastChangedServo
         setValues(selectedServoIndex)
         rf2.lcdNeedsInvalidate = true
@@ -118,9 +77,7 @@ return {
     write = function(page)
         getValues(selectedServoIndex)
         for servoIndex = 0, #servos.configs do
-            mspSaveMessage.prepareMessage(mspSaveMessage, servoIndex)
-            rf2.mspQueue:add(mspSaveMessage)
-            print("Saving servo "..tostring(servoIndex))
+            mspServos.setServoConfiguration(servoIndex, servos.configs[servoIndex])
         end
         rf2.settingsSaved()
     end,
