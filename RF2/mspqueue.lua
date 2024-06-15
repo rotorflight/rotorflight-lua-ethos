@@ -49,22 +49,6 @@ rf2.mspHelper = {
         table.insert(buf, byte3)
         table.insert(buf, byte4)
     end,
-    disableServoOverride = function(servoIndex)
-        payload = { servoIndex }
-        rf2.mspHelper.writeU16(payload, 2001)
-        rf2.mspQueue:add( {
-            command = 193, -- MSP_SET_SERVO_OVERRIDE
-            payload = payload
-        })
-    end,
-    enableServoOverride = function(servoIndex)
-        local message = {
-            command = 193, -- MSP_SET_SERVO_OVERRIDE
-            payload = { servoIndex }
-        }
-        rf2.mspHelper.writeU16(message.payload, 0)
-        rf2.mspQueue:add(message)
-    end
 }
 
 local mspApiVersion =

@@ -52,9 +52,9 @@ fields[2] = {
     sp = x + sp,
     min = 50,
     max = 2250,
-    preEdit = function(self, page) rf2.mspHelper.enableServoOverride(selectedServoIndex) end,
+    preEdit = function(self, page) mspServos.enableServoOverride(selectedServoIndex) end,
     change = onCenterChanged,
-    postEdit = function(self, page) rf2.mspHelper.disableServoOverride(selectedServoIndex) end
+    postEdit = function(self, page) mspServos.disableServoOverride(selectedServoIndex) end
 }
 fields[3] = { t = "Min",           x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = -1000, max = 1000, vals = { 4,5 } }
 fields[4] = { t = "Max",           x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = -1000, max = 1000, vals = { 6,7 } }

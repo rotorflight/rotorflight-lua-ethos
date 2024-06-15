@@ -37,7 +37,27 @@ local setServoConfigurationMessage = {
     end,
 }
 
+local function disableServoOverride(servoIndex)
+    local message = {
+        command = 193, -- MSP_SET_SERVO_OVERRIDE
+        payload = { servoIndex }
+    }
+    rf2.mspHelper.writeU16(message.payload, 2001)
+    rf2.mspQueue:add(message)
+end
+
+local function enableServoOverride(servoIndex)
+    local message = {
+        command = 193, -- MSP_SET_SERVO_OVERRIDE
+        payload = { servoIndex }
+    }
+    rf2.mspHelper.writeU16(message.payload, 0)
+    rf2.mspQueue:add(message)
+end
+
 return {
+    enableServoOverride = enableServoOverride,
+    disableServoOverride = disableServoOverride,
     getServoConfigurations = function(callbackParam, callback)
         rf2.mspQueue:add(loadServoConfigurationsMessage, callback, callbackParam)
     end,
