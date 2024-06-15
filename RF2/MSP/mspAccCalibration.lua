@@ -4,6 +4,7 @@ local function calibrate(callback, callbackParam)
         command = 205, -- MSP_ACC_CALIBRATION
         processReply = function(self, buf)
             print("Accelerometer calibrated.")
+            if callback then callback(callbackParam) end
         end,
     }
     rf2.mspQueue:add(message)
