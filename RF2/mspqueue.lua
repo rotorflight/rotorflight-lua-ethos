@@ -51,25 +51,6 @@ rf2.mspHelper = {
     end,
 }
 
-local mspStatus =
-{
-    command = 101, -- MSP_STATUS
-    processReply = function(self, buf)
-        buf.offset = 18
-        rf2.FC.CONFIG.armingDisableFlags = rf2.mspHelper.readU32(buf)
-        print("Arming disable flags: "..tostring(rf2.FC.CONFIG.armingDisableFlags))
-        buf.offset = 24
-        rf2.FC.CONFIG.profile = rf2.mspHelper.readU8(buf)
-        rf2.FC.CONFIG.numProfiles = rf2.mspHelper.readU8(buf)
-        rf2.FC.CONFIG.rateProfile = rf2.mspHelper.readU8(buf)
-        rf2.FC.CONFIG.numRateProfiles = rf2.mspHelper.readU8(buf)
-        rf2.FC.CONFIG.motorCount = rf2.mspHelper.readU8(buf)
-        print("Number of motors: "..tostring(rf2.FC.CONFIG.motorCount))
-        rf2.FC.CONFIG.servoCount = rf2.mspHelper.readU8(buf)
-        print("Number of servos: "..tostring(rf2.FC.CONFIG.servoCount))
-    end,
-}
-
 local function deepCopy(original)
     local copy
     if type(original) == "table" then

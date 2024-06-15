@@ -10,5 +10,5 @@ local function calibrate(callback, callbackParam)
 end
 
 return {
-    calibrate = calibrate,
+    calibrate = calibrate
 }

@@ -12,5 +12,5 @@ local function getApiVersion(callback, callbackParam)
 end
 
 return {
-    getApiVersion = getApiVersion,
+    getApiVersion = getApiVersion
 }
