@@ -8,8 +8,8 @@ local function getServoConfigurations(callback, callbackParam)
             for i = 0, servosCount-1 do
                 local config = {}
                 config.mid = rf2.mspHelper.readU16(buf)
-                config.min = rf2.mspHelper.readI16(buf)
-                config.max = rf2.mspHelper.readI16(buf)
+                config.min = rf2.mspHelper.readS16(buf)
+                config.max = rf2.mspHelper.readS16(buf)
                 config.scaleNeg = rf2.mspHelper.readU16(buf)
                 config.scalePos = rf2.mspHelper.readU16(buf)
                 config.rate = rf2.mspHelper.readU16(buf)

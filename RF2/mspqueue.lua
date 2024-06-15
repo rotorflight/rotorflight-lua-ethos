@@ -12,7 +12,7 @@ rf2.mspHelper = {
         buf.offset = offset + 2
         return value
     end,
-    readI16 = function(buf)
+    readS16 = function(buf)
         local offset = buf.offset or 1
         local value = buf[offset]
         value = value | buf[offset + 1] << 8
