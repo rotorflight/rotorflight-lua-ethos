@@ -70,15 +70,6 @@ local mspStatus =
     end,
 }
 
-local mspAccCalibration =
-{
-    command = 205, -- MSP_ACC_CALIBRATION
-    processReply = function(self, buf)
-        print("Calibrated!")
-    end,
-    --exampleResponse = { 205, nil, nil}
-}
-
 local function deepCopy(original)
     local copy
     if type(original) == "table" then
