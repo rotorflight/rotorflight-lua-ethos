@@ -1,5 +1,7 @@
+local mspApiVersion = assert(rf2.loadScript("/scripts/RF2/MSP/mspApiVersion.lua"))()
 local returnTable = { f = nil, t = "" }
 local SUPPORTED_API_VERSION = "12.06" -- see main/msp/msp_protocol.h
+local apiVersion = nil
 
 local function init()
     --if true then return true end
@@ -10,14 +12,14 @@ local function init()
 
     if returnTable.t ~= "Waiting for API version" then
         returnTable.t = "Waiting for API version"
-        rf2.mspQueue:add("MSP_API_VERSION")
+        mspApiVersion.getApiVersion(function(_, version) apiVersion = version end)
     end
 
     rf2.mspQueue:processQueue()
 
     if rf2.mspQueue:isProcessed() then
-        if tostring(rf2.FC.CONFIG.apiVersion) ~= SUPPORTED_API_VERSION then -- work-around for comparing floats
-            returnTable.t = "This version of the Lua scripts ("..SUPPORTED_API_VERSION..")\ncan't be used with the selected model ("..tostring(rf2.FC.CONFIG.apiVersion)..")."
+        if tostring(apiVersion) ~= SUPPORTED_API_VERSION then -- work-around for comparing floats
+            returnTable.t = "This version of the Lua scripts ("..SUPPORTED_API_VERSION..")\ncan't be used with the selected model ("..tostring(apiVersion)..")."
         else
             -- received correct API version, proceed
             return true

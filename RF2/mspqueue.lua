@@ -51,20 +51,6 @@ rf2.mspHelper = {
     end,
 }
 
-local mspApiVersion =
-{
-    command = 1, -- MSP_API_VERSION
-    processReply = function(self, buf)
-        if #buf >= 3 then
-            rf2.FC.CONFIG.apiVersion = buf[2] + buf[3] / 100
-        end
-    end,
-    onProcessed = function(self)
-        print("API version: "..rf2.FC.CONFIG.apiVersion)
-    end
-    --exampleResponse = { 1, { 0, 12, 6 }, nil} -- cmd, buf, err
-}
-
 local mspStatus =
 {
     command = 101, -- MSP_STATUS
@@ -119,7 +105,6 @@ function MspQueueController.new()
     self.retryCount = 0
     self.maxRetries = 3
     self.messages = {
-        MSP_API_VERSION = mspApiVersion,
         MSP_STATUS = mspStatus,
         MSP_ACC_CALIBRATION = mspAccCalibration,
     }
@@ -164,9 +149,9 @@ function MspQueueController:processQueue()
         if self.currentMessage.processReply then
             self.currentMessage:processReply(buf)
         end
-        if self.currentMessage.onProcessed then
-            self.currentMessage:onProcessed(self.currentMessage.onProcessedParameter)
-        end
+        --if self.currentMessage.onProcessed then
+        --    self.currentMessage:onProcessed(self.currentMessage.onProcessedParameter)
+        --end
         self.currentMessage = nil
     elseif self.retryCount == self.maxRetries then
         self.currentMessage = nil

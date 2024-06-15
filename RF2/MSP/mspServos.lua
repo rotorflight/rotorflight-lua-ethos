@@ -1,4 +1,4 @@
-local function getServoConfigurations(callbackParam, callback)
+local function getServoConfigurations(callback, callbackParam)
     local message = {
         command = 120, -- MSP_SERVO_CONFIGURATIONS
         processReply = function(self, buf)
@@ -17,10 +17,10 @@ local function getServoConfigurations(callbackParam, callback)
                 config.flags = rf2.mspHelper.readU16(buf)
                 configs[i] = config
             end
-            self.reply = configs
+            callback(callbackParam, configs)
         end,
     }
-    rf2.mspQueue:add(message, callback, callbackParam)
+    rf2.mspQueue:add(message)
 end
 
 local function setServoConfiguration(servoIndex, servoConfig)

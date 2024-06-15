@@ -362,7 +362,6 @@ local function create()
     init = nil
     popupMenu = nil
     lastEvent = nil
-    rf2.FC.CONFIG.apiVersion = 0
     callCreate = false
 
     return {}

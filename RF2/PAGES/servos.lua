@@ -11,34 +11,34 @@ local y = yMinLim - lineSpacing
 local inc = { x = function(val) x = x + val return x end, y = function(val) y = y + val return y end }
 local labels = {}
 local fields = {}
-local servos = {}
+local servoConfigs = {}
 local selectedServoIndex = 0
 
 local  function setValues(servoIndex)
     fields[1].value = servoIndex
-    fields[2].value = servos.configs[servoIndex].mid
-    fields[3].value = servos.configs[servoIndex].min
-    fields[4].value = servos.configs[servoIndex].max
-    fields[5].value = servos.configs[servoIndex].scaleNeg
-    fields[6].value = servos.configs[servoIndex].scalePos
-    fields[7].value = servos.configs[servoIndex].rate
-    fields[8].value = servos.configs[servoIndex].speed
+    fields[2].value = servoConfigs[servoIndex].mid
+    fields[3].value = servoConfigs[servoIndex].min
+    fields[4].value = servoConfigs[servoIndex].max
+    fields[5].value = servoConfigs[servoIndex].scaleNeg
+    fields[6].value = servoConfigs[servoIndex].scalePos
+    fields[7].value = servoConfigs[servoIndex].rate
+    fields[8].value = servoConfigs[servoIndex].speed
 end
 
 local function getValues(servoIndex)
-    servos.configs[servoIndex].mid = fields[2].value
-    servos.configs[servoIndex].min = fields[3].value
-    servos.configs[servoIndex].max = fields[4].value
-    servos.configs[servoIndex].scaleNeg = fields[5].value
-    servos.configs[servoIndex].scalePos = fields[6].value
-    servos.configs[servoIndex].rate = fields[7].value
-    servos.configs[servoIndex].speed = fields[8].value
+    servoConfigs[servoIndex].mid = fields[2].value
+    servoConfigs[servoIndex].min = fields[3].value
+    servoConfigs[servoIndex].max = fields[4].value
+    servoConfigs[servoIndex].scaleNeg = fields[5].value
+    servoConfigs[servoIndex].scalePos = fields[6].value
+    servoConfigs[servoIndex].rate = fields[7].value
+    servoConfigs[servoIndex].speed = fields[8].value
 end
 
 local onCenterChanged = function(self, page)
     if not self.lastTimeSet or self.lastTimeSet + 50 < rf2.getTime() then
         getValues(selectedServoIndex)
-        mspServos.setServoConfiguration(selectedServoIndex, servos.configs[selectedServoIndex])
+        mspServos.setServoConfiguration(selectedServoIndex, servoConfigs[selectedServoIndex])
         self.lastTimeSet = rf2.getTime()
     end
 end
@@ -65,19 +65,19 @@ fields[8] = { t = "Speed",         x = x + indent, y = inc.y(lineSpacing), sp = 
 
 return {
     read = function(self)
-        mspServos.getServoConfigurations(self, self.processServoConfigurations)
+        mspServos.getServoConfigurations(self.processServoConfigurations, self)
     end,
-    processServoConfigurations = function(message, page)
-        servos.configs = message.reply -- TODO: don't like this
+    processServoConfigurations = function(self, configs)
+        servoConfigs = configs
         selectedServoIndex = rf2.lastChangedServo
         setValues(selectedServoIndex)
         rf2.lcdNeedsInvalidate = true
-        page.isReady = true -- TODO: use pageStatus instead?
+        self.isReady = true -- TODO: use pageStatus instead?
     end,
     write = function(page)
         getValues(selectedServoIndex)
-        for servoIndex = 0, #servos.configs do
-            mspServos.setServoConfiguration(servoIndex, servos.configs[servoIndex])
+        for servoIndex = 0, #servoConfigs do
+            mspServos.setServoConfiguration(servoIndex, servoConfigs[servoIndex])
         end
         rf2.settingsSaved()
     end,
