@@ -76,10 +76,6 @@ function MspQueueController.new()
     self.lastTimeCommandSent = 0
     self.retryCount = 0
     self.maxRetries = 3
-    self.messages = {
-        MSP_STATUS = mspStatus,
-        MSP_ACC_CALIBRATION = mspAccCalibration,
-    }
     return self
 end
 
@@ -116,33 +112,18 @@ function MspQueueController:processQueue()
     local cmd, buf, err = returnExampleTuple(self.currentMessage.exampleResponse)
     --]]
 
-    -- 68 = MSP_REBOOT
-    if (cmd == self.currentMessage.command and not err) or (self.currentMessage.command == 68 and self.retryCount == 2) then
+    if (cmd == self.currentMessage.command and not err) or (self.currentMessage.command == 68 and self.retryCount == 2) then -- 68 = MSP_REBOOT
         if self.currentMessage.processReply then
             self.currentMessage:processReply(buf)
         end
-        --if self.currentMessage.onProcessed then
-        --    self.currentMessage:onProcessed(self.currentMessage.onProcessedParameter)
-        --end
         self.currentMessage = nil
     elseif self.retryCount == self.maxRetries then
         self.currentMessage = nil
     end
 end
 
--- onProcessed and onProcessedParameter are optional parameters
-function MspQueueController:add(message, onProcessed, onProcessedParameter)
-    if type(message) == "string" then
-        message = self.messages[message]
-    else
-        message = deepCopy(message)
-    end
-
-    if onProcessed then
-        message.onProcessed = onProcessed
-        message.onProcessedParameter = onProcessedParameter
-    end
-
+function MspQueueController:add(message)
+    message = deepCopy(message)
     table.insert(self.messageQueue, message)
     return self
 end
