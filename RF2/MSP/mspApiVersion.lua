@@ -7,6 +7,7 @@ local function getApiVersion(callback, callbackParam)
                 callback(callbackParam, version)
             end
         end,
+        simulatorResponse = { 1, { 0, 12, 6 }, nil}
     }
     rf2.mspQueue:add(message)
 end

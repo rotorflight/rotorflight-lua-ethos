@@ -6,6 +6,7 @@ local function calibrate(callback, callbackParam)
             print("Accelerometer calibrated.")
             if callback then callback(callbackParam) end
         end,
+        simulatorResponse = { 205, nil, nil}
     }
     rf2.mspQueue:add(message)
 end
