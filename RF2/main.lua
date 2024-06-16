@@ -349,7 +349,8 @@ local function create()
 
     rf2.protocol = assert(rf2.loadScript("/scripts/RF2/protocols.lua"))()
     rf2.radio = assert(rf2.loadScript("/scripts/RF2/radios.lua"))().msp
-    rf2.mspQueue = assert(rf2.loadScript("/scripts/RF2/mspqueue.lua"))()
+    rf2.mspQueue = assert(rf2.loadScript("/scripts/RF2/MSP/mspQueue.lua"))()
+    rf2.mspHelper = assert(rf2.loadScript("/scripts/RF2/MSP/mspHelper.lua"))()
     assert(rf2.loadScript(rf2.protocol.mspTransport))()
     assert(rf2.loadScript("/scripts/RF2/MSP/common.lua"))()
 
