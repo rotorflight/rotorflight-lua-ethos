@@ -54,13 +54,10 @@ local MENU_TITLE_BGCOLOR, ITEM_TEXT_SELECTED, ITEM_TEXT_NORMAL, ITEM_TEXT_EDITIN
 
 -- All RF2 globals should be stored in the rf2 table, to avoid conflict with globals from other scripts.
 rf2 = {
-    runningInSimulator = false,
+    runningInSimulator = system:getVersion().simulation,
     lastChangedServo = 0,
     protocol = nil,
     radio = nil,
-    FC = {
-        CONFIG = {}
-    },
     mspQueue = nil,
     sensor = nil,
     lcdNeedsInvalidate = false,

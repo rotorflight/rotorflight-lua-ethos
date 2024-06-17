@@ -1,5 +1,15 @@
 local mspAccCalibration = assert(rf2.loadScript("/scripts/RF2/MSP/mspAccCalibration.lua"))()
+local sentCalibrate = false
 
-mspAccCalibration.calibrate()
+local function calibrate()
+    if not sentCalibrate then
+        mspAccCalibration.calibrate()
+        sentCalibrate = true
+    end
 
-return { f = function() return rf2.mspQueue:isProcessed() end, t = "Calibrating Accelerometer" }
+    rf2.mspQueue:processQueue()
+
+    return rf2.mspQueue:isProcessed()
+end
+
+return { f = calibrate, t = "Calibrating Accelerometer" }

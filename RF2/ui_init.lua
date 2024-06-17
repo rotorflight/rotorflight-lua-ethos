@@ -5,7 +5,7 @@ local apiVersion = nil
 
 local function init()
     --if true then return true end
-    if rf2.getRSSI() == 0 then
+    if rf2.getRSSI() == 0 and not rf2.runningInSimulator then
         returnTable.t = "Waiting for connection"
         return false
     end
