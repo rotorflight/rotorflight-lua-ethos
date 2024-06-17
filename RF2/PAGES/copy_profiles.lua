@@ -31,8 +31,8 @@ return {
     labels      = labels,
     fields      = fields,
     onProcessedMspStatus = function(self, status)
-        -- prepare page for MSP_COPY_PROFILE
         fcStatus = status
+        -- prepare page for MSP_COPY_PROFILE
         self.values = { 0, self.getDestinationPidProfile(self), fcStatus.profile }
         rf2.dataBindFields()
     end,

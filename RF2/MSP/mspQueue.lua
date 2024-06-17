@@ -89,24 +89,30 @@ end
 
 return MspQueueController.new()
 
--- Usage example
+--[[ Usage example
 
---[[
-local mspCustomMessage =
+local myMspMessage =
 {
     command = 111,
-    processReply = nil,
-    onProcessed = function(self, buf)
-        print("Do something with the response!")
+    processReply = function(self, buf)
+        print("Do something with the response buffer")
     end,
-    exampleResponse = { 111, nil, nil}
+    simulatorResponse = { 111, { 1, 2, 3, 4 }, nil}
+}
+
+local anotherMspMessage =
+{
+    command = 123,
+    processReply = function(self, buf)
+        print("Received response for command "..tostring(self.command).." with length "..tostring(#buf))
+    end,
+    simulatorResponse = { 123, { 254, 128 }, nil}    -- cmd, buf, err
 }
 
 local myMspQueue = MspQueueController.new()
 myMspQueue
-  :add("MSP_API_VERSION")
-  :add("MSP_ACC_CALIBRATION")
-  :add(mspCustomMessage)
+  :add(myMspMessage)
+  :add(anotherMspMessage)
 
 while not myMspQueue:isProcessed() do
     myMspQueue:processQueue()
