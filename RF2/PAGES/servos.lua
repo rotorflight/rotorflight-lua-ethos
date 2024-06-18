@@ -13,6 +13,7 @@ local labels = {}
 local fields = {}
 local servoConfigs = {}
 local selectedServoIndex = 0
+local updateSelectedServoConfiguration = false
 
 local  function setValues(servoIndex)
     fields[1].value = servoIndex
@@ -35,33 +36,35 @@ local function getValues(servoIndex)
     servoConfigs[servoIndex].speed = fields[8].value
 end
 
-local onCenterChanged = function(self, page)
-    if not self.lastTimeSet or self.lastTimeSet + 50 < rf2.getTime() then
-        getValues(selectedServoIndex)
-        mspServos.setServoConfiguration(selectedServoIndex, servoConfigs[selectedServoIndex])
-        self.lastTimeSet = rf2.getTime()
-    end
+-- Field event functions
+
+local function onChangeServo(field, page)
+    getValues(selectedServoIndex)
+    selectedServoIndex = field.value
+    rf2.lastChangedServo = selectedServoIndex
+    setValues(selectedServoIndex)
 end
 
-fields[1] = { t = "Servo",         x = x,          y = inc.y(lineSpacing), sp = x + sp, min = 0, max = 7, vals = { 1 }, table = { [0] = "ELEVATOR", "CYCL L", "CYCL R", "TAIL" },
-    postEdit = function(self, page) page.servoChanged(page, self.value) end }
-fields[2] = {
-    t = "Center",
-    x = x + indent,
-    y = inc.y(lineSpacing),
-    sp = x + sp,
-    min = 50,
-    max = 2250,
-    preEdit = function(self, page) mspServos.enableServoOverride(selectedServoIndex) end,
-    change = onCenterChanged,
-    postEdit = function(self, page) mspServos.disableServoOverride(selectedServoIndex) end
-}
-fields[3] = { t = "Min",           x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = -1000, max = 1000, vals = { 4,5 } }
-fields[4] = { t = "Max",           x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = -1000, max = 1000, vals = { 6,7 } }
-fields[5] = { t = "Scale neg",     x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 100, max = 1000, vals = { 8,9 } }
-fields[6] = { t = "Scale pos",     x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 100, max = 1000, vals = { 10,11 } }
-fields[7] = { t = "Rate",          x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 50, max = 5000, vals = { 12,13 } }
-fields[8] = { t = "Speed",         x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 0, max = 60000, vals = { 14,15 } }
+local function onPreEditCenter(field, page)
+    mspServos.enableServoOverride(selectedServoIndex)
+end
+
+local function onChangeCenter(field, page)
+    updateSelectedServoConfiguration = true
+end
+
+local function onPostEditCenter(field, page)
+    mspServos.disableServoOverride(selectedServoIndex)
+end
+
+fields[1] = { t = "Servo",       x = x,          y = inc.y(lineSpacing), sp = x + sp, min = 0,     max = 7,     vals = { 1 }, table = { [0] = "ELEVATOR", "CYCL L", "CYCL R", "TAIL" }, postEdit = onChangeServo }
+fields[2] = { t = "Center",      x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 50,    max = 2250,  preEdit = onPreEditCenter, change = onChangeCenter, postEdit = onPostEditCenter }
+fields[3] = { t = "Min",         x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = -1000, max = 1000,  vals = { 4,5 } }
+fields[4] = { t = "Max",         x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = -1000, max = 1000, vals = { 6,7 } }
+fields[5] = { t = "Scale neg",   x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 100,   max = 1000, vals = { 8,9 } }
+fields[6] = { t = "Scale pos",   x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 100,   max = 1000, vals = { 10,11 } }
+fields[7] = { t = "Rate",        x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 50,    max = 5000, vals = { 12,13 } }
+fields[8] = { t = "Speed",       x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 0,     max = 60000, vals = { 14,15 } }
 
 return {
     read = function(self)
@@ -71,6 +74,7 @@ return {
         servoConfigs = configs
         selectedServoIndex = rf2.lastChangedServo
         setValues(selectedServoIndex)
+        self.fields[1].max = #configs
         rf2.lcdNeedsInvalidate = true
         self.isReady = true -- TODO: use pageStatus instead?
     end,
@@ -81,11 +85,12 @@ return {
         end
         rf2.settingsSaved()
     end,
-    servoChanged = function(self, servoIndex)
-        getValues(selectedServoIndex)
-        selectedServoIndex = servoIndex
-        rf2.lastChangedServo = servoIndex
-        setValues(servoIndex)
+    timer = function(page)
+        if updateSelectedServoConfiguration then
+            getValues(selectedServoIndex)
+            mspServos.setServoConfiguration(selectedServoIndex, servoConfigs[selectedServoIndex])
+            updateSelectedServoConfiguration = false
+        end
     end,
     title       = "Servos",
     reboot      = false,

@@ -19,6 +19,9 @@ local function getServoConfigurations(callback, callbackParam)
             end
             callback(callbackParam, configs)
         end,
+        simulatorResponse = { 120, { 2,
+            220, 5, 68, 253, 188, 2, 244, 1, 244, 1, 77, 1, 0, 0, 0, 0,
+            221, 5, 68, 253, 188, 2, 244, 1, 244, 1, 77, 1, 0, 0, 0, 0 } }
     }
     rf2.mspQueue:add(message)
 end
