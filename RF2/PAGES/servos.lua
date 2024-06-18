@@ -57,14 +57,14 @@ local function onPostEditCenter(field, page)
     mspServos.disableServoOverride(selectedServoIndex)
 end
 
-fields[1] = { t = "Servo",       x = x,          y = inc.y(lineSpacing), sp = x + sp, min = 0,     max = 7,     vals = { 1 }, table = { [0] = "ELEVATOR", "CYCL L", "CYCL R", "TAIL" }, postEdit = onChangeServo }
-fields[2] = { t = "Center",      x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 50,    max = 2250,  preEdit = onPreEditCenter, change = onChangeCenter, postEdit = onPostEditCenter }
-fields[3] = { t = "Min",         x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = -1000, max = 1000,  vals = { 4,5 } }
-fields[4] = { t = "Max",         x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = -1000, max = 1000, vals = { 6,7 } }
-fields[5] = { t = "Scale neg",   x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 100,   max = 1000, vals = { 8,9 } }
-fields[6] = { t = "Scale pos",   x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 100,   max = 1000, vals = { 10,11 } }
-fields[7] = { t = "Rate",        x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 50,    max = 5000, vals = { 12,13 } }
-fields[8] = { t = "Speed",       x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 0,     max = 60000, vals = { 14,15 } }
+fields[1] = { t = "Servo",      x = x,          y = inc.y(lineSpacing), sp = x + sp, min = 0,     max = 7,     table = { [0] = "ELEVATOR", "CYCL L", "CYCL R", "TAIL" }, postEdit = onChangeServo }
+fields[2] = { t = "Center",     x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 50,    max = 2250,  preEdit = onPreEditCenter, change = onChangeCenter, postEdit = onPostEditCenter }
+fields[3] = { t = "Min",        x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = -1000, max = 1000 }
+fields[4] = { t = "Max",        x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = -1000, max = 1000 }
+fields[5] = { t = "Scale neg",  x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 100,   max = 1000 }
+fields[6] = { t = "Scale pos",  x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 100,   max = 1000 }
+fields[7] = { t = "Rate",       x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 50,    max = 5000 }
+fields[8] = { t = "Speed",      x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 0,     max = 60000 }
 
 return {
     read = function(self)
