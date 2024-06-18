@@ -16,10 +16,6 @@ function MspQueueController:isProcessed()
     return not self.currentMessage and #self.messageQueue == 0
 end
 
-local function getCmdBufErrTuple(table)
-    return table[1], table[2], table[3]
-end
-
 function joinTableItems(table, delimiter)
     if table == nil or #table == 0 then return "" end
     delimiter = delimiter or ""
@@ -60,9 +56,10 @@ function MspQueueController:processQueue()
             print("No simulator response for command "..tostring(self.currentMessage.command))
             self.currentMessage = nil
             return
-        else
-            cmd, buf, err = getCmdBufErrTuple(self.currentMessage.simulatorResponse)
         end
+        cmd = self.currentMessage.command
+        buf = self.currentMessage.simulatorResponse
+        err = nil
     end
 
     if cmd then print("Received cmd: "..tostring(cmd)) end
@@ -108,7 +105,7 @@ local myMspMessage =
     processReply = function(self, buf)
         print("Do something with the response buffer")
     end,
-    simulatorResponse = { 111, { 1, 2, 3, 4 }, nil}
+    simulatorResponse = { 1, 2, 3, 4 }
 }
 
 local anotherMspMessage =
@@ -117,7 +114,7 @@ local anotherMspMessage =
     processReply = function(self, buf)
         print("Received response for command "..tostring(self.command).." with length "..tostring(#buf))
     end,
-    simulatorResponse = { 123, { 254, 128 }, nil}    -- cmd, buf, err
+    simulatorResponse = { 254, 128 }
 }
 
 local myMspQueue = MspQueueController.new()

@@ -161,7 +161,8 @@ local mspEepromWrite =
             rebootFc()
         end
         invalidatePages()
-    end
+    end,
+    simulatorResponse = {}
 }
 
 rf2.settingsSaved = function()

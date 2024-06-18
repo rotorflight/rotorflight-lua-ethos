@@ -2,10 +2,10 @@ local function getServoConfigurations(callback, callbackParam)
     local message = {
         command = 120, -- MSP_SERVO_CONFIGURATIONS
         processReply = function(self, buf)
-            local servosCount = rf2.mspHelper.readU8(buf)
-            print("Servo count "..tostring(servosCount))
+            local servoCount = rf2.mspHelper.readU8(buf)
+            print("Servo count "..tostring(servoCount))
             local configs = {}
-            for i = 0, servosCount-1 do
+            for i = 0, servoCount-1 do
                 local config = {}
                 config.mid = rf2.mspHelper.readU16(buf)
                 config.min = rf2.mspHelper.readS16(buf)
@@ -19,9 +19,11 @@ local function getServoConfigurations(callback, callbackParam)
             end
             callback(callbackParam, configs)
         end,
-        simulatorResponse = { 120, { 2,
+        simulatorResponse = {
+            2,
             220, 5, 68, 253, 188, 2, 244, 1, 244, 1, 77, 1, 0, 0, 0, 0,
-            221, 5, 68, 253, 188, 2, 244, 1, 244, 1, 77, 1, 0, 0, 0, 0 } }
+            221, 5, 68, 253, 188, 2, 244, 1, 244, 1, 77, 1, 0, 0, 0, 0
+        }
     }
     rf2.mspQueue:add(message)
 end
