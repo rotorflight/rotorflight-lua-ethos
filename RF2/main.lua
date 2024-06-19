@@ -132,6 +132,12 @@ rf2 = {
         --return 784, 406
         --return 472, 288
         --return 472, 240
+    end,
+
+    log = function(str)
+        local f = io.open("/LOGS/rf2.log", 'a')
+        io.write(f, str .. "\n")
+        io.close(f)
     end
 }
 

@@ -16,6 +16,7 @@ function MspQueueController:isProcessed()
     return not self.currentMessage and #self.messageQueue == 0
 end
 
+--[[
 function joinTableItems(table, delimiter)
     if table == nil or #table == 0 then return "" end
     delimiter = delimiter or ""
@@ -25,6 +26,7 @@ function joinTableItems(table, delimiter)
     end
     return result
 end
+--]]
 
 function MspQueueController:processQueue()
     if self:isProcessed() then
@@ -65,7 +67,7 @@ function MspQueueController:processQueue()
     if cmd then print("Received cmd: "..tostring(cmd)) end
 
     if (cmd == self.currentMessage.command and not err) or (self.currentMessage.command == 68 and self.retryCount == 2) then -- 68 = MSP_REBOOT
-        print("Received: {" .. joinTableItems(buf, ", ") .. "}")
+        --print("Received: {" .. joinTableItems(buf, ", ") .. "}")
         if self.currentMessage.processReply then
             self.currentMessage:processReply(buf)
         end
