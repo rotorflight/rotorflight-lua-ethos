@@ -292,13 +292,20 @@ end
 
 local function incValue(inc)
     local f = Page.fields[currentField]
-    local scale = f.scale or 1
-    local mult = f.mult or 1
-    f.value = clipValue(f.value + inc*mult/scale, (f.min or 0)/scale, (f.max or 255)/scale)
-    f.value = math.floor(f.value*scale/mult + 0.5)*mult/scale
-    if Page.values then
-        for idx=1, #f.vals do
-            Page.values[f.vals[idx]] = math.floor(f.value*scale + 0.5)>>((idx-1)*8)
+    if f.data then
+        local scale = f.data.scale or 1
+        local mult = f.data.mult or 1
+        f.data.value = clipValue(f.data.value + inc*mult, (f.data.min or 0), (f.data.max or 255))
+        f.data.value = math.floor(f.data.value/mult + 0.5)*mult
+    else
+        local scale = f.scale or 1
+        local mult = f.mult or 1
+        f.value = clipValue(f.value + inc*mult/scale, (f.min or 0)/scale, (f.max or 255)/scale)
+        f.value = math.floor(f.value*scale/mult + 0.5)*mult/scale
+        if Page.values then
+            for idx=1, #f.vals do
+                Page.values[f.vals[idx]] = math.floor(f.value*scale + 0.5)>>((idx-1)*8)
+            end
         end
     end
     if f.change then
@@ -619,7 +626,15 @@ local function drawScreen()
         local val = "---"
         for i=1,#Page.fields do
             local f = Page.fields[i]
-            if f.value then
+            if f.data and f.data.value then
+                val = f.data.value
+                if type(val) == "number" then
+                    val = val / (f.data.scale or 1)
+                end
+                if f.data.table and f.data.table[val] then
+                    val = f.data.table[val]
+                end
+            elseif f.value then
                 val = f.value
                 if f.table and f.table[f.value] then
                     val = f.table[f.value]
@@ -645,6 +660,7 @@ local function drawScreen()
                     lcd.color(ITEM_TEXT_NORMAL)
                 end
                 strVal = ""
+                --print("val is "..type(val))
                 if (type(val) == "string") then
                     strVal = val
                 elseif (type(val) == "number") then
