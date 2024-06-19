@@ -34,36 +34,36 @@ fields[15] = { t = "Precomp bandwidth",   x = x, y = inc.y(lineSpacing), sp = x 
 
 local function setValues()
     fields[1].value = governorConfig.gov_mode
-    fields[2].value = governorConfig.gov_startup_time
-    fields[3].value = governorConfig.gov_spoolup_time
-    fields[4].value = governorConfig.gov_tracking_time
-    fields[5].value = governorConfig.gov_recovery_time
-    fields[6].value = governorConfig.gov_zero_throttle_timeout
-    fields[7].value = governorConfig.gov_lost_headspeed_timeout
+    fields[2].value = governorConfig.gov_handover_throttle
+    fields[3].value = governorConfig.gov_startup_time
+    fields[4].value = governorConfig.gov_spoolup_time
+    fields[5].value = governorConfig.gov_tracking_time
+    fields[6].value = governorConfig.gov_recovery_time
+    fields[7].value = governorConfig.gov_autorotation_bailout_time
     fields[8].value = governorConfig.gov_autorotation_timeout
-    fields[9].value = governorConfig.gov_autorotation_bailout_time
-    fields[10].value = governorConfig.gov_autorotation_min_entry_time
-    fields[11].value = governorConfig.gov_handover_throttle
-    fields[12].value = governorConfig.gov_pwr_filter
-    fields[13].value = governorConfig.gov_rpm_filter
+    fields[9].value = governorConfig.gov_autorotation_min_entry_time
+    fields[10].value = governorConfig.gov_zero_throttle_timeout
+    fields[11].value = governorConfig.gov_lost_headspeed_timeout
+    fields[12].value = governorConfig.gov_rpm_filter
+    fields[13].value = governorConfig.gov_pwr_filter
     fields[14].value = governorConfig.gov_tta_filter
     fields[15].value = governorConfig.gov_ff_filter
 end
 
 local function getValues()
     governorConfig.gov_mode = fields[1].value
-    governorConfig.gov_startup_time = fields[2].value
-    governorConfig.gov_spoolup_time = fields[3].value
-    governorConfig.gov_tracking_time = fields[4].value
-    governorConfig.gov_recovery_time = fields[5].value
-    governorConfig.gov_zero_throttle_timeout = fields[6].value
-    governorConfig.gov_lost_headspeed_timeout = fields[7].value
+    governorConfig.gov_handover_throttle = fields[2].value
+    governorConfig.gov_startup_time = fields[3].value
+    governorConfig.gov_spoolup_time = fields[4].value
+    governorConfig.gov_tracking_time = fields[5].value
+    governorConfig.gov_recovery_time = fields[6].value
+    governorConfig.gov_autorotation_bailout_time = fields[7].value
     governorConfig.gov_autorotation_timeout = fields[8].value
-    governorConfig.gov_autorotation_bailout_time = fields[9].value
-    governorConfig.gov_autorotation_min_entry_time = fields[10].value
-    governorConfig.gov_handover_throttle = fields[11].value
-    governorConfig.gov_pwr_filter = fields[12].value
-    governorConfig.gov_rpm_filter = fields[13].value
+    governorConfig.gov_autorotation_min_entry_time = fields[9].value
+    governorConfig.gov_zero_throttle_timeout = fields[10].value
+    governorConfig.gov_lost_headspeed_timeout = fields[11].value
+    governorConfig.gov_rpm_filter = fields[12].value
+    governorConfig.gov_pwr_filter = fields[13].value
     governorConfig.gov_tta_filter = fields[14].value
     governorConfig.gov_ff_filter = fields[15].value
 end
