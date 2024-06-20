@@ -45,7 +45,8 @@ end
 local function setGovernorConfig(config)
     local message = {
         command = 143, -- MSP_SET_GOVERNOR_CONFIG
-        payload = {}
+        payload = {},
+        simulatorResponse = {}
     }
     rf2.mspHelper.writeU8(message.payload, config.gov_mode.value)
     rf2.mspHelper.writeU16(message.payload, config.gov_startup_time.value)
@@ -62,7 +63,7 @@ local function setGovernorConfig(config)
     rf2.mspHelper.writeU8(message.payload, config.gov_rpm_filter.value)
     rf2.mspHelper.writeU8(message.payload, config.gov_tta_filter.value)
     rf2.mspHelper.writeU8(message.payload, config.gov_ff_filter.value)
-    simulatorResponse = {}
+    rf2.mspQueue:add(message)
 end
 
 return {
