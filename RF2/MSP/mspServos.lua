@@ -7,14 +7,14 @@ local function getServoConfigurations(callback, callbackParam)
             local configs = {}
             for i = 0, servoCount-1 do
                 local config = {}
-                config.mid = rf2.mspHelper.readU16(buf)
-                config.min = rf2.mspHelper.readS16(buf)
-                config.max = rf2.mspHelper.readS16(buf)
-                config.scaleNeg = rf2.mspHelper.readU16(buf)
-                config.scalePos = rf2.mspHelper.readU16(buf)
-                config.rate = rf2.mspHelper.readU16(buf)
-                config.speed = rf2.mspHelper.readU16(buf)
-                config.flags = rf2.mspHelper.readU16(buf)
+                config.mid = { value = rf2.mspHelper.readU16(buf), min = 50,    max = 2250 }
+                config.min = { value = rf2.mspHelper.readS16(buf), min = -1000, max = 1000 }
+                config.max = { value = rf2.mspHelper.readS16(buf), min = -1000, max = 1000 }
+                config.scaleNeg = { value = rf2.mspHelper.readU16(buf), min = 100, max = 1000 }
+                config.scalePos = { value = rf2.mspHelper.readU16(buf), min = 100, max = 1000 }
+                config.rate = { value = rf2.mspHelper.readU16(buf), min = 50, max = 5000 }
+                config.speed = { value = rf2.mspHelper.readU16(buf), min = 0, max = 60000 }
+                config.flags = { value = rf2.mspHelper.readU16(buf), min = 0, max = 3 }
                 configs[i] = config
             end
             callback(callbackParam, configs)
@@ -34,14 +34,14 @@ local function setServoConfiguration(servoIndex, servoConfig)
         payload = {}
     }
     rf2.mspHelper.writeU8(message.payload, servoIndex)
-    rf2.mspHelper.writeU16(message.payload, servoConfig.mid)
-    rf2.mspHelper.writeU16(message.payload, servoConfig.min)
-    rf2.mspHelper.writeU16(message.payload, servoConfig.max)
-    rf2.mspHelper.writeU16(message.payload, servoConfig.scaleNeg)
-    rf2.mspHelper.writeU16(message.payload, servoConfig.scalePos)
-    rf2.mspHelper.writeU16(message.payload, servoConfig.rate)
-    rf2.mspHelper.writeU16(message.payload, servoConfig.speed)
-    rf2.mspHelper.writeU16(message.payload, servoConfig.flags)
+    rf2.mspHelper.writeU16(message.payload, servoConfig.mid.value)
+    rf2.mspHelper.writeU16(message.payload, servoConfig.min.value)
+    rf2.mspHelper.writeU16(message.payload, servoConfig.max.value)
+    rf2.mspHelper.writeU16(message.payload, servoConfig.scaleNeg.value)
+    rf2.mspHelper.writeU16(message.payload, servoConfig.scalePos.value)
+    rf2.mspHelper.writeU16(message.payload, servoConfig.rate.value)
+    rf2.mspHelper.writeU16(message.payload, servoConfig.speed.value)
+    rf2.mspHelper.writeU16(message.payload, servoConfig.flags.value)
     rf2.mspQueue:add(message)
 end
 
