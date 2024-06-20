@@ -55,25 +55,26 @@ fields[6] = { t = "Scale pos",  x = x + indent, y = inc.y(lineSpacing), sp = x +
 fields[7] = { t = "Rate",       x = x + indent, y = inc.y(lineSpacing), sp = x + sp }
 fields[8] = { t = "Speed",      x = x + indent, y = inc.y(lineSpacing), sp = x + sp }
 
+local function receivedServoConfigurations(page, configs)
+    servoConfigs = configs
+    selectedServoIndex = rf2.lastChangedServo
+    setValues(selectedServoIndex)
+    page.fields[1].max = #configs
+    rf2.lcdNeedsInvalidate = true
+    page.isReady = true -- TODO: use pageStatus instead?
+end
+
 return {
     read = function(self)
-        mspServos.getServoConfigurations(self.processServoConfigurations, self)
+        mspServos.getServoConfigurations(receivedServoConfigurations, self)
     end,
-    processServoConfigurations = function(self, configs)
-        servoConfigs = configs
-        selectedServoIndex = rf2.lastChangedServo
-        setValues(selectedServoIndex)
-        self.fields[1].max = #configs
-        rf2.lcdNeedsInvalidate = true
-        self.isReady = true -- TODO: use pageStatus instead?
-    end,
-    write = function(page)
+    write = function(self)
         for servoIndex = 0, #servoConfigs do
             mspServos.setServoConfiguration(servoIndex, servoConfigs[servoIndex])
         end
         rf2.settingsSaved()
     end,
-    timer = function(page)
+    timer = function(self)
         if updateSelectedServoConfiguration then
             mspServos.setServoConfiguration(selectedServoIndex, servoConfigs[selectedServoIndex])
             updateSelectedServoConfiguration = false

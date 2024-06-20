@@ -50,17 +50,18 @@ local function setValues()
     fields[15].data = governorConfig.gov_ff_filter
 end
 
+local function receivedGovernorConfig(page, config)
+    governorConfig = config
+    setValues()
+    rf2.lcdNeedsInvalidate = true
+    page.isReady = true -- TODO: use pageStatus instead?
+end
+
 return {
     read = function(self)
-        mspGovernorConfig.getGovernorConfig(self.processGovernorConfig, self)
+        mspGovernorConfig.getGovernorConfig(receivedGovernorConfig, self)
     end,
-    processGovernorConfig = function(self, config)
-        governorConfig = config
-        setValues()
-        rf2.lcdNeedsInvalidate = true
-        self.isReady = true -- TODO: use pageStatus instead?
-    end,
-    write = function(page)
+    write = function(self)
         mspGovernorConfig.setGovernorConfig(governorConfig)
         rf2.settingsSaved()
     end,
