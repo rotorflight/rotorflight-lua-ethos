@@ -1,4 +1,5 @@
 local template = assert(rf2.loadScript(rf2.radio.template))()
+local mspStatus = assert(rf2.loadScript("/scripts/RF2/MSP/mspStatus.lua"))()
 local margin = template.margin
 local indent = template.indent
 local lineSpacing = template.lineSpacing
@@ -60,9 +61,34 @@ fields[#fields + 1] = {              x = x, y = inc.y(tableSpacing.row), min = 0
 fields[#fields + 1] = {              x = x, y = inc.y(tableSpacing.row), min = 0, max = 1000, vals = { 27,28 } }
 fields[#fields + 1] = {              x = x, y = inc.y(tableSpacing.row), min = 0, max = 1000, vals = { 29,30 } }
 
+local currentProfile
+
+local function checkProfileChanged(page, status)
+    if not currentProfile then
+        currentProfile = status.profile
+        return
+    end
+
+    if currentProfile ~= status.profile then
+        --print("old profile: "..tostring(currentProfile).." new profile: "..tostring(status.profile))
+        currentProfile = status.profile
+        rf2.readPage()
+    end
+end
+
 return {
     read        = 112, -- MSP_PID_TUNING
     write       = 202, -- MSP_SET_PID_TUNING
+    simulatorResponse = { 50, 0, 100, 0, 10, 0, 100, 0, 50, 0, 100, 0, 20, 0, 100, 0, 50, 0, 50, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 25, 0 },
+    timerCounter = 0,
+    timer = function(self)
+        if self.timerCounter == 2 then
+            mspStatus.getStatus(checkProfileChanged, self)
+            self.timerCounter = 0
+        else
+            self.timerCounter = self.timerCounter + 1
+        end
+    end,
     title       = "PIDs",
     reboot      = false,
     eepromWrite = true,

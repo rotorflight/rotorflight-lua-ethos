@@ -204,6 +204,7 @@ local function saveSettings()
             --end
             mspSaveSettings.command = Page.write
             mspSaveSettings.payload = payload
+            mspSaveSettings.simulatorResponse = {}
             rf2.mspQueue:add(mspSaveSettings)
         elseif type(Page.write) == "function" then
             Page.write(Page)
@@ -239,16 +240,21 @@ local mspLoadSettings =
     end
 }
 
+rf2.readPage = function()
+    if type(Page.read) == "function" then
+        Page.read(Page)
+    else
+        mspLoadSettings.command = Page.read
+        mspLoadSettings.simulatorResponse = Page.simulatorResponse
+        rf2.mspQueue:add(mspLoadSettings)
+    end
+end
+
 local function requestPage()
     if not Page.reqTS or Page.reqTS + requestTimeout <= os.clock() then
         Page.reqTS = os.clock()
         if Page.read then
-            if type(Page.read) == "function" then
-                Page.read(Page)
-            else
-                mspLoadSettings.command = Page.read
-                rf2.mspQueue:add(mspLoadSettings)
-            end
+            rf2.readPage()
         end
     end
 end
