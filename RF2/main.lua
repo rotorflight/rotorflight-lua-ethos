@@ -60,6 +60,7 @@ rf2 = {
     protocol = nil,
     radio = nil,
     mspQueue = nil,
+    mspHelper = nil,
     sensor = nil,
     lcdNeedsInvalidate = false,
     dataBindFields = function()
