@@ -48,6 +48,7 @@ local EVT_VIRTUAL_ENTER = 32
 local EVT_VIRTUAL_ENTER_LONG = 129
 local EVT_VIRTUAL_EXIT = 97
 local EVT_VIRTUAL_PREV = 99
+local EVT_VIRTUAL_PREV_LONG = 131
 local EVT_VIRTUAL_NEXT = 98
 
 local MENU_TITLE_BGCOLOR, ITEM_TEXT_SELECTED, ITEM_TEXT_NORMAL, ITEM_TEXT_EDITING
@@ -348,6 +349,7 @@ end
 
 -- CREATE:  Called once each time the system widget is opened by the user.
 local function create()
+    --print("create called")
     rf2.sensor = sport.getSensor({primId=0x32})
     rssiSensor = system.getSource("RSSI")
     if not rssiSensor then
@@ -571,7 +573,15 @@ end
 local function event(widget, category, value, x, y)
     print("Event received:", category, value, x, y)
     if category == EVT_KEY then
-        if value ==  97 then
+        if value == EVT_VIRTUAL_PREV_LONG then
+            print("Forcing exit")
+            if uiState == uiStatus.pages then
+                pageState = pageStatus.display
+                prevUiState = nil
+            end
+            system.exit()
+            return 0
+        elseif value ==  97 then
             -- Process enter later when it's clear it's not a long enter
             enterEvent = EVT_VIRTUAL_ENTER
             enterEventTime = os.clock()
