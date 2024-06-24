@@ -57,7 +57,7 @@ fields[8] = { t = "Speed",      x = x + indent, y = inc.y(lineSpacing), sp = x +
 
 local function receivedServoConfigurations(page, configs)
     servoConfigs = configs
-    selectedServoIndex = rf2.lastChangedServo
+    selectedServoIndex = rf2.lastChangedServo or 0
     setValues(selectedServoIndex)
     page.fields[1].max = #configs
     rf2.lcdNeedsInvalidate = true

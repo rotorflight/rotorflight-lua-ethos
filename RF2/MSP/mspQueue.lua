@@ -47,7 +47,7 @@ function MspQueueController:processQueue()
             else
                 rf2.protocol.mspWrite(self.currentMessage.command, {})
             end
-            self.lastTimeCommandSent = getTime()
+            self.lastTimeCommandSent = rf2.getTime()
             self.retryCount = self.retryCount + 1
         end
 
@@ -72,7 +72,7 @@ function MspQueueController:processQueue()
             self.currentMessage:processReply(buf)
         end
         self.currentMessage = nil
-    elseif self.retryCount == self.maxRetries then
+    elseif self.retryCount > self.maxRetries then
         self.currentMessage = nil
     end
 end
@@ -93,6 +93,7 @@ end
 
 function MspQueueController:add(message)
     message = deepCopy(message)
+    rf2.print("Queueing command "..message.command.." at position "..#self.messageQueue + 1)
     table.insert(self.messageQueue, message)
     return self
 end
