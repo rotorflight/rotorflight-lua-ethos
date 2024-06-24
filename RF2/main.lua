@@ -34,7 +34,7 @@ local popupMenuActive = 1
 local pageScrollY = 0
 local mainMenuScrollY = 0
 local telemetryState
-local PageFiles, Page, init, popupMenu, requestTimeout, rssiSensor
+local PageFiles, Page, init, popupMenu, requestTimeout
 
 -- New variables for Ethos version
 local screenTitle = nil
@@ -53,95 +53,7 @@ local EVT_VIRTUAL_NEXT = 98
 
 local MENU_TITLE_BGCOLOR, ITEM_TEXT_SELECTED, ITEM_TEXT_NORMAL, ITEM_TEXT_EDITING
 
--- All RF2 globals should be stored in the rf2 table, to avoid conflict with globals from other scripts.
-rf2 = {
-    runningInSimulator = system:getVersion().simulation,
-    lastChangedServo = 0,
-    protocol = nil,
-    radio = nil,
-    mspQueue = nil,
-    mspHelper = nil,
-    sensor = nil,
-    lcdNeedsInvalidate = false,
-    dataBindFields = function()
-        for i=1,#Page.fields do
-            if #Page.values >= Page.minBytes then
-                local f = Page.fields[i]
-                if f.vals then
-                    f.value = 0
-                    for idx=1, #f.vals do
-                        local raw_val = Page.values[f.vals[idx]] or 0
-                        raw_val = raw_val<<((idx-1)*8)
-                        f.value = f.value|raw_val
-                    end
-                    local bits = #f.vals * 8
-                    if f.min and f.min < 0 and (f.value & (1 << (bits - 1)) ~= 0) then
-                        f.value = f.value - (2 ^ bits)
-                    end
-                    f.value = f.value/(f.scale or 1)
-                end
-            end
-        end
-        rf2.lcdNeedsInvalidate = true
-    end,
-
-    -- OpenTX <-> Ethos mapping functions
-    sportTelemetryPop = function()
-        -- Pops a received SPORT packet from the queue. Please note that only packets using a data ID within 0x5000 to 0x50FF (frame ID == 0x10), as well as packets with a frame ID equal 0x32 (regardless of the data ID) will be passed to the LUA telemetry receive queue.
-        local frame = rf2.sensor:popFrame()
-        if frame == nil then
-            return nil, nil, nil, nil
-        end
-        -- physId = physical / remote sensor Id (aka sensorId)
-        --   0x00 for FPORT, 0x1B for SmartPort
-        -- primId = frame ID  (should be 0x32 for reply frames)
-        -- appId = data Id
-        return frame:physId(), frame:primId(), frame:appId(), frame:value()
-    end,
-
-    sportTelemetryPush = function(sensorId, frameId, dataId, value)
-        -- OpenTX:
-        -- When called without parameters, it will only return the status of the output buffer without sending anything.
-        --   Equivalent in Ethos may be:   sensor:idle() ???
-        -- @param sensorId  physical sensor ID
-        -- @param frameId   frame ID
-        -- @param dataId    data ID
-        -- @param value     value
-        -- @retval boolean  data queued in output buffer or not.
-        -- @retval nil      incorrect telemetry protocol.  (added in 2.3.4)
-        return rf2.sensor:pushFrame({physId=sensorId, primId=frameId, appId=dataId, value=value})
-    end,
-
-    getRSSI = function()
-        if rssiSensor ~= nil and rssiSensor:state() then
-            -- this will return the last known value if nothing is received
-            return rssiSensor:value()
-        end
-        -- return 0 if no telemetry signal to match OpenTX
-        return 0
-    end,
-
-    getTime = function()
-        return os.clock() * 100;
-    end,
-
-    loadScript = function(script)
-        return loadfile(script)
-    end,
-
-    getWindowSize = function()
-        return lcd.getWindowSize()
-        --return 784, 406
-        --return 472, 288
-        --return 472, 240
-    end,
-
-    log = function(str)
-        local f = io.open("/LOGS/rf2.log", 'a')
-        io.write(f, str .. "\n")
-        io.close(f)
-    end
-}
+assert(loadScript("/SCRIPTS/RF2/rf2.lua"))()
 
 local function invalidatePages()
     Page = nil
@@ -201,9 +113,6 @@ local function saveSettings()
 
         if Page.values then
             local payload = Page.values
-            --if Page.preSave then
-            --    payload = Page.preSave(Page)
-            --end
             mspSaveSettings.command = Page.write
             mspSaveSettings.payload = payload
             mspSaveSettings.simulatorResponse = {}
@@ -214,16 +123,6 @@ local function saveSettings()
 
         rf2.lcdNeedsInvalidate = true
     end
-end
-
-local function confirm(page)
-    prevUiState = uiState
-    uiState = uiStatus.confirm
-    invalidatePages()
-    currentField = 1
-    Page = assert(rf2.loadScript(page))()
-    rf2.lcdNeedsInvalidate = true
-    collectgarbage()
 end
 
 local mspLoadSettings =
@@ -261,6 +160,16 @@ local function requestPage()
     end
 end
 
+local function confirm(page)
+    prevUiState = uiState
+    uiState = uiStatus.confirm
+    invalidatePages()
+    currentField = 1
+    Page = assert(rf2.loadScript(page))()
+    rf2.lcdNeedsInvalidate = true
+    collectgarbage()
+end
+
 local function createPopupMenu()
     popupMenuActive = 1
     popupMenu = {}
@@ -270,6 +179,28 @@ local function createPopupMenu()
     end
     popupMenu[#popupMenu + 1] = { t = "Reboot", f = rebootFc }
     popupMenu[#popupMenu + 1] = { t = "Acc Cal", f = function() confirm("/scripts/RF2/CONFIRM/acc_cal.lua") end }
+end
+
+rf2.dataBindFields = function()
+    for i=1,#Page.fields do
+        if #Page.values >= Page.minBytes then
+            local f = Page.fields[i]
+            if f.vals then
+                f.value = 0
+                for idx=1, #f.vals do
+                    local raw_val = Page.values[f.vals[idx]] or 0
+                    raw_val = raw_val<<((idx-1)*8)
+                    f.value = f.value|raw_val
+                end
+                local bits = #f.vals * 8
+                if f.min and f.min < 0 and (f.value & (1 << (bits - 1)) ~= 0) then
+                    f.value = f.value - (2 ^ bits)
+                end
+                f.value = f.value/(f.scale or 1)
+            end
+        end
+    end
+    rf2.lcdNeedsInvalidate = true
 end
 
 local function incMax(val, inc, base)
@@ -324,7 +255,7 @@ end
 local function updateTelemetryState()
     local oldTelemetryState = telemetryState
 
-    if not rssiSensor then
+    if not rf2.rssiSensor then
         telemetryState = telemetryStatus.noSensor
     elseif rf2.getRSSI() == 0 then
         telemetryState = telemetryStatus.noTelemetry
@@ -352,15 +283,15 @@ end
 local function create()
     --print("create called")
     rf2.sensor = sport.getSensor({primId=0x32})
-    rssiSensor = system.getSource("RSSI")
-    if not rssiSensor then
-        rssiSensor = system.getSource("RSSI 2.4G")
-        if not rssiSensor then
-            rssiSensor = system.getSource("RSSI 900M")
-            if not rssiSensor then
-                rssiSensor = system.getSource("Rx RSSI1")
-                if not rssiSensor then
-                    rssiSensor = system.getSource("Rx RSSI2")
+    rf2.rssiSensor = system.getSource("RSSI")
+    if not rf2.rssiSensor then
+        rf2.rssiSensor = system.getSource("RSSI 2.4G")
+        if not rf2.rssiSensor then
+            rf2.rssiSensor = system.getSource("RSSI 900M")
+            if not rf2.rssiSensor then
+                rf2.rssiSensor = system.getSource("Rx RSSI1")
+                if not rf2.rssiSensor then
+                    rf2.rssiSensor = system.getSource("Rx RSSI2")
                 end
             end
         end
@@ -371,13 +302,13 @@ local function create()
     rf2.protocol = assert(rf2.loadScript("/scripts/RF2/protocols.lua"))()
     rf2.radio = assert(rf2.loadScript("/scripts/RF2/radios.lua"))().msp
     rf2.mspQueue = assert(rf2.loadScript("/scripts/RF2/MSP/mspQueue.lua"))()
+    rf2.mspQueue.maxRetries = rf2.protocol.maxRetries
     rf2.mspHelper = assert(rf2.loadScript("/scripts/RF2/MSP/mspHelper.lua"))()
     assert(rf2.loadScript(rf2.protocol.mspTransport))()
     assert(rf2.loadScript("/scripts/RF2/MSP/common.lua"))()
 
     -- Initial var setting
     --saveTimeout = rf2.protocol.saveTimeout
-    rf2.mspQueue.maxRetries = rf2.protocol.maxRetries
     requestTimeout = rf2.protocol.pageReqTimeout
     screenTitle = "Rotorflight "..LUA_VERSION
     uiState = uiStatus.init
@@ -494,16 +425,14 @@ local function wakeup(widget)
             elseif lastEvent == EVT_VIRTUAL_NEXT then
                 incField(1)
                 rf2.lcdNeedsInvalidate = true
-            elseif lastEvent == EVT_VIRTUAL_ENTER then
-                if Page then
-                    local f = Page.fields[currentField]
-                    if (Page.isReady or (Page.values and f.vals and Page.values[f.vals[#f.vals]])) and not f.ro then
-                        pageState = pageStatus.editing
-                        if Page.fields[currentField].preEdit then
-                            Page.fields[currentField]:preEdit(Page)
-                        end
-                        rf2.lcdNeedsInvalidate = true
+            elseif Page and lastEvent == EVT_VIRTUAL_ENTER then
+                local f = Page.fields[currentField]
+                if (Page.isReady or (Page.values and f.vals and Page.values[f.vals[#f.vals]])) and not f.ro then
+                    pageState = pageStatus.editing
+                    if Page.fields[currentField].preEdit then
+                        Page.fields[currentField]:preEdit(Page)
                     end
+                    rf2.lcdNeedsInvalidate = true
                 end
             elseif lastEvent == EVT_VIRTUAL_ENTER_LONG then
                 print("Popup from page")
