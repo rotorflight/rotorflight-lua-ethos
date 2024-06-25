@@ -79,7 +79,7 @@ end
 return {
     read        = 112, -- MSP_PID_TUNING
     write       = 202, -- MSP_SET_PID_TUNING
-    simulatorResponse = { 50, 0, 100, 0, 10, 0, 100, 0, 50, 0, 100, 0, 20, 0, 100, 0, 50, 0, 50, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 25, 0 },
+    simulatorResponse = {70, 0, 225, 0, 90, 0, 120, 0, 100, 0, 200, 0, 70, 0, 120, 0, 100, 0, 125, 0, 83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 25, 0 },
     timerCounter = 0,
     timer = function(self)
         if self.timerCounter == 2 then

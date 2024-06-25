@@ -37,8 +37,6 @@ rf2 = {
         return 0
     end,
 
-    clock = os.clock,
-
     loadScript = function(script)
         return loadfile(script)
     end,
@@ -60,4 +58,6 @@ rf2 = {
         print(tostring(str))
         --rf2.log(str)
     end,
+    
+    clock = os.clock,
 }
