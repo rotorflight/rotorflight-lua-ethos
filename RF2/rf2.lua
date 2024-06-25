@@ -38,6 +38,7 @@ rf2 = {
     end,
 
     loadScript = function(script)
+        -- loadScript also works on 1.5.9, but is undocumented (?)
         return loadfile(script)
     end,
 
@@ -58,6 +59,6 @@ rf2 = {
         print(tostring(str))
         --rf2.log(str)
     end,
-    
+
     clock = os.clock,
 }

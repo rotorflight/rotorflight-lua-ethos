@@ -1,5 +1,5 @@
 -- RotorFlight + ETHOS LUA configuration
-local LUA_VERSION = "2.0 - 240430"
+local LUA_VERSION = "2.0 - 240625"
 
 local uiStatus =
 {
@@ -53,7 +53,7 @@ local EVT_VIRTUAL_NEXT = 98
 
 local MENU_TITLE_BGCOLOR, ITEM_TEXT_SELECTED, ITEM_TEXT_NORMAL, ITEM_TEXT_EDITING
 
-assert(loadScript("/SCRIPTS/RF2/rf2.lua"))()
+assert(loadScript("/SCRIPTS/RF2/rf2.lua"), 'c')()
 
 local function invalidatePages()
     Page = nil
