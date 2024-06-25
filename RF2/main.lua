@@ -152,8 +152,8 @@ rf2.readPage = function()
 end
 
 local function requestPage()
-    if not Page.reqTS or Page.reqTS + rf2.protocol.pageReqTimeout <= os.clock() then
-        Page.reqTS = os.clock()
+    if not Page.reqTS or Page.reqTS + rf2.protocol.pageReqTimeout <= rf2.clock() then
+        Page.reqTS = rf2.clock()
         if Page.read then
             rf2.readPage()
         end
@@ -331,7 +331,7 @@ local function wakeup(widget)
 	-- HACK for processing long enter events without processing normal enter events as well.
     -- A long enter event might follow some time (max 0.6s) after a normal enter event.
     -- Only process normal enter events after that time if no long enter event has been received.
-	if enterEvent ~= nil and (os.clock() - enterEventTime > 0.6) then
+	if enterEvent ~= nil and (rf2.clock() - enterEventTime > 0.6) then
         lastEvent = enterEvent
 		enterEvent = nil
 	end
@@ -513,12 +513,12 @@ local function event(widget, category, value, x, y)
         elseif value ==  97 then
             -- Process enter later when it's clear it's not a long enter
             enterEvent = EVT_VIRTUAL_ENTER
-            enterEventTime = os.clock()
+            enterEventTime = rf2.clock()
             return true
         elseif value == 129 then
             -- Long enter
             -- Clear the normal enter and only process the long enter
-            rf2.print("Time elapsed since last enter: "..(os.clock() - enterEventTime))
+            rf2.print("Time elapsed since last enter: "..(rf2.clock() - enterEventTime))
             enterEvent = nil
             lastEvent = EVT_VIRTUAL_ENTER_LONG
             return true
