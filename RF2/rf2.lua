@@ -40,21 +40,19 @@ rf2 = {
 
     startsWith = function(str, prefix)
         if #prefix > #str then return false end
---[[
         for i = 1, #prefix do
             if str:byte(i) ~= prefix:byte(i) then
                 return false
             end
         end
---]]
         return true
     end,
 
     loadScript = function(script)
         -- loadScript also works on 1.5.9, but is undocumented (?)
-        --if not rf2.startsWith(script, rf2.baseDir) then
-        --    script = rf2.baseDir..script
-        --end
+        if not rf2.startsWith(script, rf2.baseDir) then
+            script = rf2.baseDir..script
+        end
         return loadfile(script)
     end,
 
