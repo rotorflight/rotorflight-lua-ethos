@@ -31,23 +31,23 @@ local mspHelper = {
     end,
     writeU8 = function(buf, value)
         local byte1 = value & 0xFF
-        table.insert(buf, byte1)
+        buf[#buf + 1] = byte1
     end,
     writeU16 = function(buf, value)
         local byte1 = value & 0xFF
         local byte2 = (value >> 8) & 0xFF
-        table.insert(buf, byte1)
-        table.insert(buf, byte2)
+        buf[#buf + 1] = byte1
+        buf[#buf + 1] = byte2
     end,
     writeU32 = function(buf, value)
         local byte1 = value & 0xFF
         local byte2 = (value >> 8) & 0xFF
         local byte3 = (value >> 16) & 0xFF
         local byte4 = (value >> 24) & 0xFF
-        table.insert(buf, byte1)
-        table.insert(buf, byte2)
-        table.insert(buf, byte3)
-        table.insert(buf, byte4)
+        buf[#buf + 1] = byte1
+        buf[#buf + 1] = byte2
+        buf[#buf + 1] = byte3
+        buf[#buf + 1] = byte4
     end,
 }
 

@@ -1,5 +1,5 @@
 -- RotorFlight + ETHOS LUA configuration
-local LUA_VERSION = "2.0 - 240625"
+local LUA_VERSION = "2.0.0 - 240625"
 
 local uiStatus =
 {
@@ -53,7 +53,7 @@ local EVT_VIRTUAL_NEXT = 98
 
 local MENU_TITLE_BGCOLOR, ITEM_TEXT_SELECTED, ITEM_TEXT_NORMAL, ITEM_TEXT_EDITING
 
-assert(loadScript("/SCRIPTS/RF2/rf2.lua"), 'c')()
+assert(loadfile("/scripts/RF2/rf2.lua"))()
 
 local function invalidatePages()
     Page = nil
@@ -299,13 +299,13 @@ local function create()
 
     --rf2.sensor:idle(false)
 
-    rf2.protocol = assert(rf2.loadScript("/scripts/RF2/protocols.lua"))()
-    rf2.radio = assert(rf2.loadScript("/scripts/RF2/radios.lua"))().msp
-    rf2.mspQueue = assert(rf2.loadScript("/scripts/RF2/MSP/mspQueue.lua"))()
+    rf2.protocol = assert(rf2.loadScript("protocols.lua"))()
+    rf2.radio = assert(rf2.loadScript("radios.lua"))().msp
+    rf2.mspQueue = assert(rf2.loadScript("MSP/mspQueue.lua"))()
     rf2.mspQueue.maxRetries = rf2.protocol.maxRetries
-    rf2.mspHelper = assert(rf2.loadScript("/scripts/RF2/MSP/mspHelper.lua"))()
+    rf2.mspHelper = assert(rf2.loadScript("MSP/mspHelper.lua"))()
     assert(rf2.loadScript(rf2.protocol.mspTransport))()
-    assert(rf2.loadScript("/scripts/RF2/MSP/common.lua"))()
+    assert(rf2.loadScript("MSP/common.lua"))()
 
     -- Initial var setting
     --saveTimeout = rf2.protocol.saveTimeout
@@ -365,7 +365,7 @@ local function wakeup(widget)
         if init ~= nil then
             prevInit = init.t
         end
-        init = init or assert(rf2.loadScript("/scripts/RF2/ui_init.lua"))()
+        init = init or assert(rf2.loadScript("ui_init.lua"))()
         if lastEvent == EVT_VIRTUAL_EXIT then
 			lastEvent = nil
 			lcd.invalidate()
@@ -383,7 +383,7 @@ local function wakeup(widget)
             return 0
         end
         init = nil
-        PageFiles = assert(rf2.loadScript("/scripts/RF2/pages.lua"))()
+        PageFiles = assert(rf2.loadScript("pages.lua"))()
         invalidatePages()
         uiState = prevUiState or uiStatus.mainMenu
         prevUiState = nil
@@ -461,7 +461,7 @@ local function wakeup(widget)
             end
         end
         if not Page then
-            Page = assert(rf2.loadScript("/scripts/RF2/PAGES/"..PageFiles[currentPage].script))()
+            Page = assert(rf2.loadScript("PAGES/"..PageFiles[currentPage].script))()
             collectgarbage()
         end
         if not(Page.values or Page.isReady) and pageState == pageStatus.display then

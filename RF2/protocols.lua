@@ -2,7 +2,7 @@ local supportedProtocols =
 {
     smartPort =
     {
-        mspTransport    = "/scripts/RF2/MSP/sp.lua",
+        mspTransport    = "MSP/sp.lua",
         push            = rf2.sportTelemetryPush,
         maxTxBufferSize = 6,
         maxRxBufferSize = 6,
@@ -12,7 +12,7 @@ local supportedProtocols =
     },
     crsf =
     {
-        mspTransport    = "/scripts/RF2/MSP/crsf.lua",
+        mspTransport    = "MSP/crsf.lua",
         maxTxBufferSize = 8,
         maxRxBufferSize = 58,
         maxRetries      = 3,

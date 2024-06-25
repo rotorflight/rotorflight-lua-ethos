@@ -83,7 +83,7 @@ return {
         end
     end,
     updateRatesType = function(self, applyDefaults)
-        local ratesTable = assert(rf2.loadScript("/scripts/RF2/RATETABLES/"..self.getRatesType(self)..".lua"))()
+        local ratesTable = assert(rf2.loadScript("RATETABLES/"..self.getRatesType(self)..".lua"))()
         for i = 1, #ratesTable.labels do
             self.labels[i].t = ratesTable.labels[i]
         end

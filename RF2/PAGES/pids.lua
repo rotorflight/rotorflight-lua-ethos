@@ -1,5 +1,5 @@
 local template = assert(rf2.loadScript(rf2.radio.template))()
-local mspStatus = assert(rf2.loadScript("/scripts/RF2/MSP/mspStatus.lua"))()
+local mspStatus = assert(rf2.loadScript("MSP/mspStatus.lua"))()
 local margin = template.margin
 local indent = template.indent
 local lineSpacing = template.lineSpacing
