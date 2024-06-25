@@ -37,9 +37,7 @@ rf2 = {
         return 0
     end,
 
-    getTime = function()
-        return os.clock() * 100;
-    end,
+    clock = os.clock,
 
     loadScript = function(script)
         return loadfile(script)

@@ -468,9 +468,9 @@ local function wakeup(widget)
         if not(Page.values or Page.isReady) and pageState == pageStatus.display then
             requestPage()
         end
-        if Page and Page.timer and (not Page.lastTimeTimerFired or Page.lastTimeTimerFired + 50 < rf2.getTime()) then
+        if Page and Page.timer and (not Page.lastTimeTimerFired or Page.lastTimeTimerFired + 0.5 < rf2.clock()) then
             Page.timer(Page)
-            Page.lastTimeTimerFired = rf2.getTime()
+            Page.lastTimeTimerFired = rf2.clock()
         end
     elseif uiState == uiStatus.confirm then
         if lastEvent == EVT_VIRTUAL_ENTER then

@@ -28,26 +28,31 @@ function joinTableItems(table, delimiter)
 end
 --]]
 
+local function popFirstElement(tbl)
+    return table.remove(self.messageQueue, 1)
+end
+
 function MspQueueController:processQueue()
     if self:isProcessed() then
         return
     end
 
     if not self.currentMessage then
-        self.currentMessage = table.remove(self.messageQueue, 1)
+        self.currentMessage = popFirstElement(self.messageQueue)
         self.retryCount = 0
     end
 
     local cmd, buf, err
+    --rf2.print("retryCount: "..self.retryCount)
 
     if not rf2.runningInSimulator then
-        if self.lastTimeCommandSent == 0 or self.lastTimeCommandSent + 50 < rf2.getTime() then
+        if self.lastTimeCommandSent == 0 or self.lastTimeCommandSent + 0.5 < rf2.clock() then
             if self.currentMessage.payload then
                 rf2.protocol.mspWrite(self.currentMessage.command, self.currentMessage.payload)
             else
                 rf2.protocol.mspWrite(self.currentMessage.command, {})
             end
-            self.lastTimeCommandSent = rf2.getTime()
+            self.lastTimeCommandSent = rf2.clock()
             self.retryCount = self.retryCount + 1
         end
 
@@ -64,7 +69,7 @@ function MspQueueController:processQueue()
         err = nil
     end
 
-    if cmd and cmd ~= 101 then print("Received cmd: "..tostring(cmd)) end
+    if cmd then print("Received cmd: "..tostring(cmd)) end
 
     if (cmd == self.currentMessage.command and not err) or (self.currentMessage.command == 68 and self.retryCount == 2) then -- 68 = MSP_REBOOT
         --print("Received: {" .. joinTableItems(buf, ", ") .. "}")
