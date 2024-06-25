@@ -34,7 +34,7 @@ local popupMenuActive = 1
 local pageScrollY = 0
 local mainMenuScrollY = 0
 local telemetryState
-local PageFiles, Page, init, popupMenu, requestTimeout
+local PageFiles, Page, init, popupMenu
 
 -- New variables for Ethos version
 local screenTitle = nil
@@ -63,7 +63,7 @@ local function invalidatePages()
 end
 
 local function rebootFc()
-    print("Attempting to reboot the FC...")
+    rf2.print("Attempting to reboot the FC...")
     pageState = pageStatus.rebooting
     rf2.mspQueue:add({
         command = 68, -- MSP_REBOOT
@@ -128,7 +128,7 @@ end
 local mspLoadSettings =
 {
     processReply = function(self, buf)
-        print("Page is processing reply for cmd "..tostring(self.command).." len buf: "..#buf.." expected: "..Page.minBytes)
+        rf2.print("Page is processing reply for cmd "..tostring(self.command).." len buf: "..#buf.." expected: "..Page.minBytes)
         Page.values = buf
         if Page.postRead then
             Page.postRead(Page)
@@ -152,7 +152,7 @@ rf2.readPage = function()
 end
 
 local function requestPage()
-    if not Page.reqTS or Page.reqTS + requestTimeout <= os.clock() then
+    if not Page.reqTS or Page.reqTS + rf2.protocol.pageReqTimeout <= os.clock() then
         Page.reqTS = os.clock()
         if Page.read then
             rf2.readPage()
@@ -281,7 +281,7 @@ end
 
 -- CREATE:  Called once each time the system widget is opened by the user.
 local function create()
-    --print("create called")
+    --rf2.print("create called")
     rf2.sensor = sport.getSensor({primId=0x32})
     rf2.rssiSensor = system.getSource("RSSI")
     if not rf2.rssiSensor then
@@ -309,7 +309,6 @@ local function create()
 
     -- Initial var setting
     --saveTimeout = rf2.protocol.saveTimeout
-    requestTimeout = rf2.protocol.pageReqTimeout
     screenTitle = "Rotorflight "..LUA_VERSION
     uiState = uiStatus.init
     init = nil
@@ -338,7 +337,7 @@ local function wakeup(widget)
 	end
 
     if (rf2.radio == nil or rf2.protocol == nil) then
-        print("Error:  wakeup() called but create must have failed!")
+        rf2.print("Error:  wakeup() called but create must have failed!")
         return 0
     end
 
@@ -408,7 +407,7 @@ local function wakeup(widget)
             pageState = pageStatus.display  -- added in case we reboot from popup over main menu
             rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_ENTER_LONG then
-            print("Popup from main menu")
+            rf2.print("Popup from main menu")
             createPopupMenu()
             rf2.lcdNeedsInvalidate = true
         end
@@ -435,7 +434,7 @@ local function wakeup(widget)
                     rf2.lcdNeedsInvalidate = true
                 end
             elseif lastEvent == EVT_VIRTUAL_ENTER_LONG then
-                print("Popup from page")
+                rf2.print("Popup from page")
                 createPopupMenu()
                 rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_EXIT then
@@ -501,10 +500,10 @@ end
 
 -- EVENT:  Called for button presses, scroll events, touch events, etc.
 local function event(widget, category, value, x, y)
-    print("Event received:", category, value, x, y)
+    rf2.print("Event received: "..category.."  "..value)
     if category == EVT_KEY then
         if value == EVT_VIRTUAL_PREV_LONG then
-            print("Forcing exit")
+            rf2.print("Forcing exit")
             if uiState == uiStatus.pages then
                 pageState = pageStatus.display
                 prevUiState = nil
@@ -519,7 +518,7 @@ local function event(widget, category, value, x, y)
         elseif value == 129 then
             -- Long enter
             -- Clear the normal enter and only process the long enter
-            print("Time elapsed since last enter: "..(os.clock() - enterEventTime))
+            rf2.print("Time elapsed since last enter: "..(os.clock() - enterEventTime))
             enterEvent = nil
             lastEvent = EVT_VIRTUAL_ENTER_LONG
             return true
@@ -606,7 +605,7 @@ local function drawScreen()
                     lcd.color(ITEM_TEXT_NORMAL)
                 end
                 strVal = ""
-                --print("val is "..type(val))
+                --rf2.print("val is "..type(val))
                 if (type(val) == "string") then
                     strVal = val
                 elseif (type(val) == "number") then
@@ -629,7 +628,7 @@ end
 local function paint(widget)
 
     if (rf2.radio == nil or rf2.protocol == nil) then
-        print("Error:  paint() called, but create must have failed!")
+        rf2.print("Error:  paint() called, but create must have failed!")
         return
     end
 
@@ -641,12 +640,12 @@ local function paint(widget)
     local LCD_W, LCD_H = rf2.getWindowSize()
 
     if uiState == uiStatus.init then
-        print("painting uiState == uiStatus.init")
+        --rf2.print("painting uiState == uiStatus.init")
         lcd.color(ITEM_TEXT_NORMAL)
         lcd.font(FONT_STD)
         lcd.drawText(6, rf2.radio.yMinLimit, init.t)
     elseif uiState == uiStatus.mainMenu then
-        print("painting uiState == uiStatus.mainMenu")
+        --rf2.print("painting uiState == uiStatus.mainMenu")
         local yMinLim = rf2.radio.yMinLimit
         local yMaxLim = rf2.radio.yMaxLimit
         local lineSpacing = rf2.radio.lineSpacing
@@ -702,7 +701,7 @@ local function paint(widget)
     end
 
     if popupMenu then
-        print("painting popupMenu")
+        rf2.print("painting popupMenu")
         local x = rf2.radio.MenuBox.x
         local y = rf2.radio.MenuBox.y
         local w = rf2.radio.MenuBox.w
@@ -742,4 +741,4 @@ local function init()
     system.registerSystemTool({name=name, icon=icon, wakeup=wakeup, paint=paint, event=event})
 end
 
-return {init=init}
+return { init = init }

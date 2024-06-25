@@ -29,7 +29,7 @@ end
 --]]
 
 local function popFirstElement(tbl)
-    return table.remove(self.messageQueue, 1)
+    return table.remove(tbl, 1)
 end
 
 function MspQueueController:processQueue()
@@ -60,7 +60,7 @@ function MspQueueController:processQueue()
         cmd, buf, err = mspPollReply()
     else
         if not self.currentMessage.simulatorResponse then
-            print("No simulator response for command "..tostring(self.currentMessage.command))
+            rf2.print("No simulator response for command "..tostring(self.currentMessage.command))
             self.currentMessage = nil
             return
         end
@@ -69,10 +69,10 @@ function MspQueueController:processQueue()
         err = nil
     end
 
-    if cmd then print("Received cmd: "..tostring(cmd)) end
+    if cmd then rf2.print("Received cmd: "..tostring(cmd)) end
 
     if (cmd == self.currentMessage.command and not err) or (self.currentMessage.command == 68 and self.retryCount == 2) then -- 68 = MSP_REBOOT
-        --print("Received: {" .. joinTableItems(buf, ", ") .. "}")
+        --rf2.print("Received: {" .. joinTableItems(buf, ", ") .. "}")
         if self.currentMessage.processReply then
             self.currentMessage:processReply(buf)
         end
@@ -99,7 +99,7 @@ end
 function MspQueueController:add(message)
     message = deepCopy(message)
     rf2.print("Queueing command "..message.command.." at position "..#self.messageQueue + 1)
-    table.insert(self.messageQueue, message)
+    self.messageQueue[#self.messageQueue + 1] =  message
     return self
 end
 

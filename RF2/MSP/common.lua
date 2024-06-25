@@ -21,12 +21,10 @@ function mspProcessTxQ()
         return false
     end
     -- if not sensor:idle() then  -- was protocol.push() -- maybe sensor:idle()  here??
-        -- print("Sensor not idle... waiting to send cmd: "..tostring(mspLastReq))
+        -- rf2.print("Sensor not idle... waiting to send cmd: "..tostring(mspLastReq))
         -- return true
     -- end
-    if mspLastReq ~= 101 then
-        print("Sending mspTxBuf size "..tostring(#mspTxBuf).." at Idx "..tostring(mspTxIdx).." for cmd: "..tostring(mspLastReq))
-    end
+    rf2.print("Sending mspTxBuf size "..tostring(#mspTxBuf).." at Idx "..tostring(mspTxIdx).." for cmd: "..tostring(mspLastReq))
     local payload = {}
     payload[1] = mspSeq + MSP_VERSION
     mspSeq = (mspSeq + 1) & 0x0F
@@ -60,10 +58,10 @@ function mspProcessTxQ()
 end
 
 function mspSendRequest(cmd, payload)
-    --print("Sending cmd "..cmd)
+    --rf2.print("Sending cmd "..cmd)
     -- busy
     if #(mspTxBuf) ~= 0 or not cmd then
-        print("Existing mspTxBuf is still being sent, failed send of cmd: "..tostring(cmd))
+        rf2.print("Existing mspTxBuf is still being sent, failed send of cmd: "..tostring(cmd))
         return nil
     end
     mspTxBuf[1] = #(payload)
@@ -75,14 +73,14 @@ function mspSendRequest(cmd, payload)
 end
 
 local function mspReceivedReply(payload)
-    --print("Starting mspReceivedReply")
+    --rf2.print("Starting mspReceivedReply")
     local idx = 1
     local status = payload[idx]
     local version = (status & 0x60) >> 5
     local start = (status & 0x10) ~= 0
     local seq = status & 0x0F
     idx = idx + 1
-    --print(" msp sequence #:  "..string.format("%u",seq))
+    --rf2.print(" msp sequence #:  "..string.format("%u",seq))
     if start then
         -- start flag set
         mspRxBuf = {}
@@ -91,7 +89,7 @@ local function mspReceivedReply(payload)
         mspRxReq  = mspLastReq
         idx = idx + 1
         if version == 1 then
-            --print("version == 1")
+            --rf2.print("version == 1")
             mspRxReq = payload[idx]
             idx = idx + 1
         end
@@ -100,10 +98,10 @@ local function mspReceivedReply(payload)
             mspStarted = true
         end
     elseif not mspStarted then
-		print("  mspReceivedReply: missing Start flag")
+		rf2.print("  mspReceivedReply: missing Start flag")
         return nil
     elseif (mspRemoteSeq + 1) & 0x0F ~= seq then
-		print("  mspReceivedReply: msp packet sequence # incorrect")
+		rf2.print("  mspReceivedReply: msp packet sequence # incorrect")
         mspStarted = false
         return nil
     end
@@ -113,7 +111,7 @@ local function mspReceivedReply(payload)
         idx = idx + 1
     end
     if idx > rf2.protocol.maxRxBufferSize then
-		--print("  mspReceivedReply:  payload continues into next frame.")
+		--rf2.print("  mspReceivedReply:  payload continues into next frame.")
         -- Store the last sequence number so we can start there on the next continuation payload
         mspRemoteSeq = seq
         return false
@@ -121,12 +119,12 @@ local function mspReceivedReply(payload)
     mspStarted = false
     -- check CRC
     if mspRxCRC ~= payload[idx] and version == 0 then
-		print("  mspReceivedReply:  payload checksum incorrect, message failed!")
-        --print("    Calculated mspRxCRC:  0x"..string.format("%X", mspRxCRC))
-        --print("    CRC from payload:     0x"..string.format("%X", payload[idx]))
+		rf2.print("  mspReceivedReply:  payload checksum incorrect, message failed!")
+        --rf2.print("    Calculated mspRxCRC:  0x"..string.format("%X", mspRxCRC))
+        --rf2.print("    CRC from payload:     0x"..string.format("%X", payload[idx]))
         return nil
     end
-    --print("  Got reply for cmd "..mspRxReq)
+    --rf2.print("  Got reply for cmd "..mspRxReq)
     return true
 end
 

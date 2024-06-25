@@ -45,7 +45,7 @@ rf2.protocol.mspPoll = function()
     while true do
         local sensorId, frameId, dataId, value = smartPortTelemetryPop()
         if (sensorId == SMARTPORT_REMOTE_SENSOR_ID or sensorId == FPORT_REMOTE_SENSOR_ID) and frameId == REPLY_FRAME_ID then
-	 	    --print("sensorId:0x"..string.format("%X", sensorId).." frameId:0x"..string.format("%X", frameId).." dataId:0x"..string.format("%X", dataId).." value:0x"..string.format("%X", value))
+	 	    --rf2.print("sensorId:0x"..string.format("%X", sensorId).." frameId:0x"..string.format("%X", frameId).." dataId:0x"..string.format("%X", dataId).." value:0x"..string.format("%X", value))
       	  	local payload = {}
    	     	payload[1] = dataId & 0xFF
    	     	dataId = dataId >> 8
@@ -58,7 +58,7 @@ rf2.protocol.mspPoll = function()
             value = value >> 8
             payload[6] = value & 0xFF
             --for i=1,#payload do
-            --    print(  "["..string.format("%u", i).."]:  0x"..string.format("%X", payload[i]))
+            --    rf2.print(  "["..string.format("%u", i).."]:  0x"..string.format("%X", payload[i]))
             --end
         	return payload
         elseif sensorId == nil then

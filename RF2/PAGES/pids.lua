@@ -70,7 +70,7 @@ local function checkProfileChanged(page, status)
     end
 
     if currentProfile ~= status.profile then
-        --print("old profile: "..tostring(currentProfile).." new profile: "..tostring(status.profile))
+        --rf2.print("old profile: "..tostring(currentProfile).." new profile: "..tostring(status.profile))
         currentProfile = status.profile
         rf2.readPage()
     end

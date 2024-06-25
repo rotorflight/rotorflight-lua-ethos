@@ -3,7 +3,7 @@ local function getServoConfigurations(callback, callbackParam)
         command = 120, -- MSP_SERVO_CONFIGURATIONS
         processReply = function(self, buf)
             local servoCount = rf2.mspHelper.readU8(buf)
-            print("Servo count "..tostring(servoCount))
+            rf2.print("Servo count "..tostring(servoCount))
             local configs = {}
             for i = 0, servoCount-1 do
                 local config = {}

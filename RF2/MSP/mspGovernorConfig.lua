@@ -3,7 +3,7 @@ local function getGovernorConfig(callback, callbackParam)
         command = 142, -- MSP_GOVERNOR_CONFIG
         processReply = function(self, buf)
             local config = {}
-            --print("buf length: "..#buf)
+            --rf2.print("buf length: "..#buf)
             config.gov_mode = { value = rf2.mspHelper.readU8(buf), min = 0, max = 4, table = { [0] = "OFF", "PASSTHROUGH", "STANDARD", "MODE1", "MODE2" } }
             config.gov_startup_time = { value = rf2.mspHelper.readU16(buf), min = 0, max = 600, scale = 10 }
             config.gov_spoolup_time = { value = rf2.mspHelper.readU16(buf), min = 0, max = 600, scale = 10 }

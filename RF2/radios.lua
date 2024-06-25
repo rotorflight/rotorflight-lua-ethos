@@ -59,6 +59,6 @@ local supportedRadios =
 }
 
 local radio = assert(supportedRadios[resolution], resolution.." not supported")
-print(radio)
+rf2.print(radio)
 
 return radio

@@ -16,7 +16,7 @@ local supportedProtocols =
         maxTxBufferSize = 8,
         maxRxBufferSize = 58,
         maxRetries      = 3,
-        saveTimeout     = 1.5,
+        saveTimeout     = 2.5,
         pageReqTimeout  = 2,
     }
 }
