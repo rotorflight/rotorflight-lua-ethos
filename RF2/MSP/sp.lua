@@ -7,10 +7,10 @@ local REPLY_FRAME_ID   = 0x32
 local lastSensorId, lastFrameId, lastDataId, lastValue
 
 rf2.protocol.mspSend = function(payload)
-    local dataId = payload[1] + (payload[2] <<8 )
+    local dataId = payload[1] + bit32.lshift(payload[2], 8)
     local value = 0
     for i = 3, #payload do
-        value = value + (payload[i] << ((i - 3) * 8))
+        value = value + bit32.lshift(payload[i], (i - 3) * 8)
     end
     return rf2.protocol.push(LOCAL_SENSOR_ID, REQUEST_FRAME_ID, dataId, value)
 end
@@ -47,16 +47,16 @@ rf2.protocol.mspPoll = function()
         if (sensorId == SMARTPORT_REMOTE_SENSOR_ID or sensorId == FPORT_REMOTE_SENSOR_ID) and frameId == REPLY_FRAME_ID then
 	 	    --rf2.print("sensorId:0x"..string.format("%X", sensorId).." frameId:0x"..string.format("%X", frameId).." dataId:0x"..string.format("%X", dataId).." value:0x"..string.format("%X", value))
       	  	local payload = {}
-   	     	payload[1] = dataId & 0xFF
-   	     	dataId = dataId >> 8
-   	     	payload[2] = dataId & 0xFF
-  	      	payload[3] = value & 0xFF
-   	     	value = value >> 8
-   	     	payload[4] = value & 0xFF
-            value = value >> 8
-            payload[5] = value & 0xFF
-            value = value >> 8
-            payload[6] = value & 0xFF
+            payload[1] = bit32.band(dataId, 0xFF)
+            dataId = bit32.rshift(dataId, 8)
+            payload[2] = bit32.band(dataId, 0xFF)
+            payload[3] = bit32.band(value, 0xFF)
+            value = bit32.rshift(value, 8)
+            payload[4] = bit32.band(value, 0xFF)
+            value = bit32.rshift(value, 8)
+            payload[5] = bit32.band(value, 0xFF)
+            value = bit32.rshift(value, 8)
+            payload[6] = bit32.band(value, 0xFF)
             --for i=1,#payload do
             --    rf2.print(  "["..string.format("%u", i).."]:  0x"..string.format("%X", payload[i]))
             --end

@@ -1,6 +1,6 @@
 -- Protocol version
-local MSP_VERSION = 1 << 5
-local MSP_STARTFLAG = 1 << 4
+local MSP_VERSION = bit32.lshift(1,5)
+local MSP_STARTFLAG = bit32.lshift(1,4)
 
 -- Sequence number for next MSP packet
 local mspSeq = 0
@@ -27,7 +27,7 @@ function mspProcessTxQ()
     rf2.print("Sending mspTxBuf size "..tostring(#mspTxBuf).." at Idx "..tostring(mspTxIdx).." for cmd: "..tostring(mspLastReq))
     local payload = {}
     payload[1] = mspSeq + MSP_VERSION
-    mspSeq = (mspSeq + 1) & 0x0F
+    mspSeq = bit32.band(mspSeq + 1, 0x0F)
     if mspTxIdx == 1 then
         -- start flag
         payload[1] = payload[1] + MSP_STARTFLAG
@@ -36,13 +36,13 @@ function mspProcessTxQ()
     while (i <= rf2.protocol.maxTxBufferSize) and mspTxIdx <= #mspTxBuf do
         payload[i] = mspTxBuf[mspTxIdx]
         mspTxIdx = mspTxIdx + 1
-        mspTxCRC = mspTxCRC ~ payload[i]
+        mspTxCRC = bit32.bxor(mspTxCRC,payload[i])
         i = i + 1
     end
     if i <= rf2.protocol.maxTxBufferSize then
         payload[i] = mspTxCRC
         i = i + 1
-      -- zero fill
+        -- zero fill
         while i <= rf2.protocol.maxTxBufferSize do
             payload[i] = 0
             i = i + 1
@@ -65,9 +65,9 @@ function mspSendRequest(cmd, payload)
         return nil
     end
     mspTxBuf[1] = #(payload)
-    mspTxBuf[2] = cmd & 0xFF  -- MSP command
+    mspTxBuf[2] = bit32.band(cmd,0xFF)  -- MSP command
     for i=1,#(payload) do
-        mspTxBuf[i+2] = payload[i] & 0xFF
+        mspTxBuf[i+2] = bit32.band(payload[i],0xFF)
     end
     mspLastReq = cmd
 end
@@ -76,15 +76,15 @@ local function mspReceivedReply(payload)
     --rf2.print("Starting mspReceivedReply")
     local idx = 1
     local status = payload[idx]
-    local version = (status & 0x60) >> 5
-    local start = (status & 0x10) ~= 0
-    local seq = status & 0x0F
+    local version = bit32.rshift(bit32.band(status, 0x60), 5)
+    local start = bit32.btest(status, 0x10)
+    local seq = bit32.band(status, 0x0F)
     idx = idx + 1
     --rf2.print(" msp sequence #:  "..string.format("%u",seq))
     if start then
         -- start flag set
         mspRxBuf = {}
-        mspRxError = (status & 0x80) ~= 0
+        mspRxError = bit32.btest(status, 0x80)
         mspRxSize = payload[idx]
         mspRxReq  = mspLastReq
         idx = idx + 1
@@ -93,21 +93,20 @@ local function mspReceivedReply(payload)
             mspRxReq = payload[idx]
             idx = idx + 1
         end
-        mspRxCRC  = mspRxSize ~ mspRxReq
+        mspRxCRC = bit32.bxor(mspRxSize, mspRxReq)
         if mspRxReq == mspLastReq then
             mspStarted = true
         end
     elseif not mspStarted then
 		rf2.print("  mspReceivedReply: missing Start flag")
         return nil
-    elseif (mspRemoteSeq + 1) & 0x0F ~= seq then
-		rf2.print("  mspReceivedReply: msp packet sequence # incorrect")
+    elseif bit32.band(mspRemoteSeq + 1, 0x0F) ~= seq then
         mspStarted = false
         return nil
     end
     while (idx <= rf2.protocol.maxRxBufferSize) and (#mspRxBuf < mspRxSize) do
         mspRxBuf[#mspRxBuf + 1] = payload[idx]
-        mspRxCRC = mspRxCRC ~ payload[idx]
+        mspRxCRC = bit32.bxor(mspRxCRC, payload[idx])
         idx = idx + 1
     end
     if idx > rf2.protocol.maxRxBufferSize then

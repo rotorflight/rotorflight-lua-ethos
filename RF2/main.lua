@@ -53,6 +53,8 @@ local EVT_VIRTUAL_NEXT = 98
 
 local MENU_TITLE_BGCOLOR, ITEM_TEXT_SELECTED, ITEM_TEXT_NORMAL, ITEM_TEXT_EDITING
 
+-- Initialize two global vars
+bit32 = assert(loadfile("/scripts/RF2/LIBS/bit32.lua"))()
 assert(loadfile("/scripts/RF2/rf2.lua"))()
 
 local function invalidatePages()
@@ -500,7 +502,7 @@ end
 
 -- EVENT:  Called for button presses, scroll events, touch events, etc.
 local function event(widget, category, value, x, y)
-    rf2.print("Event received: "..category.."  "..value)
+    --rf2.print("Event received: "..category.."  "..value)
     if category == EVT_KEY then
         if value == EVT_VIRTUAL_PREV_LONG then
             rf2.print("Forcing exit")
