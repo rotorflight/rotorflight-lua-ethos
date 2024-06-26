@@ -21,5 +21,5 @@ return {
     title  = "Accelerometer",
     labels = labels,
     fields = fields,
-    init   = assert(rf2.loadScript("/scripts/RF2/acc_cal.lua"))(),
+    init   = assert(rf2.loadScript("acc_cal.lua"))(),
 }
