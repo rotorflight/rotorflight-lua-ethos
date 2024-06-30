@@ -30,6 +30,7 @@ local prevUiState
 local pageState = pageStatus.display
 local currentPage = 1
 local currentField = 1
+local saveTS = 0
 local popupMenuActive = 1
 local pageScrollY = 0
 local mainMenuScrollY = 0
@@ -112,6 +113,7 @@ local mspSaveSettings =
 local function saveSettings()
     if pageState ~= pageStatus.saving then
         pageState = pageStatus.saving
+        saveTS = rf2.clock()
 
         if Page.values then
             local payload = Page.values
@@ -285,19 +287,12 @@ end
 local function create()
     --rf2.print("create called")
     rf2.sensor = sport.getSensor({primId=0x32})
-    rf2.rssiSensor = system.getSource("RSSI")
-    if not rf2.rssiSensor then
-        rf2.rssiSensor = system.getSource("RSSI 2.4G")
-        if not rf2.rssiSensor then
-            rf2.rssiSensor = system.getSource("RSSI 900M")
-            if not rf2.rssiSensor then
-                rf2.rssiSensor = system.getSource("Rx RSSI1")
-                if not rf2.rssiSensor then
-                    rf2.rssiSensor = system.getSource("Rx RSSI2")
-                end
-            end
-        end
-    end
+    rf2.rssiSensor =
+        system.getSource("RSSI") or
+        system.getSource("RSSI 2.4G") or
+        system.getSource("RSSI 900M") or
+        system.getSource("Rx RSSI1") or
+        system.getSource("Rx RSSI2")
 
     --rf2.sensor:idle(false)
 
@@ -418,8 +413,13 @@ local function wakeup(widget)
             rf2.lcdNeedsInvalidate = true
             prevUiState = uiState
         end
-
-        if pageState == pageStatus.display then
+        if pageState == pageStatus.saving then
+            if saveTS + rf2.protocol.saveTimeout < rf2.clock() then
+                --rf2.print("Save timeout!")
+                pageState = pageStatus.display
+                invalidatePages()
+            end
+        elseif pageState == pageStatus.display then
             if lastEvent == EVT_VIRTUAL_PREV then
                 incField(-1)
                 rf2.lcdNeedsInvalidate = true
