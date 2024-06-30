@@ -48,7 +48,7 @@ fields[#fields + 1] = {              x = x, y = inc.y(tableSpacing.row), min = 0
 
 x = margin
 inc.y(lineSpacing*0.4)
-fields[#fields + 1] = { t = "Rates Type",          x = x,          y = inc.y(lineSpacing), sp = x + sp, min = 0, max = 5,      vals = { 1 }, table = { [0] = "NONE", "BETAFL", "RACEFL", "KISS", "ACTUAL", "QUICK"}, postEdit = function(self) self.updateRatesType(self, true) end }
+fields[#fields + 1] = { t = "Rates Type",          x = x,          y = inc.y(lineSpacing), sp = x + sp, min = 0, max = 5,      vals = { 1 }, table = { [0] = "NONE", "BETAFL", "RACEFL", "KISS", "ACTUAL", "QUICK"}, postEdit = function(self, page) page.updateRatesType(page, true) end }
 inc.y(lineSpacing*0.4)
 
 labels[#labels + 1] = { t = "Roll dynamics",       x = x,          y = inc.y(lineSpacing) }
@@ -73,6 +73,7 @@ return {
     minBytes    = 25,
     labels      = labels,
     fields      = fields,
+    simulatorResponse = { 4, 18, 25, 32, 20, 0, 0, 18, 25, 32, 20, 0, 0, 32, 50, 45, 10, 0, 0, 56, 0, 56, 20, 0, 0 },
     ratesType,
     getRatesType = function(self)
         for i = 1, #self.fields do
@@ -82,7 +83,7 @@ return {
         end
     end,
     updateRatesType = function(self, applyDefaults)
-        local ratesTable = assert(rf2.loadScript("/scripts/RF2/RATETABLES/"..self.getRatesType(self)..".lua"))()
+        local ratesTable = assert(rf2.loadScript("RATETABLES/"..self.getRatesType(self)..".lua"))()
         for i = 1, #ratesTable.labels do
             self.labels[i].t = ratesTable.labels[i]
         end
@@ -96,7 +97,7 @@ return {
                 local f = self.fields[i]
                 f.value = ratesTable.defaults[i]
                 for idx=1, #f.vals do
-                    self.values[f.vals[idx]] = math.floor(f.value*(f.scale or 1) + 0.5) >> (idx-1)*8
+                    self.values[f.vals[idx]] = bit32.rshift(math.floor(f.value*(f.scale or 1) + 0.5), (idx-1)*8)
                 end
             end
         else
@@ -105,8 +106,8 @@ return {
                 f.value = 0
                 for idx=1, #f.vals do
                     local raw_val = self.values[f.vals[idx]] or 0
-                    raw_val = raw_val << (idx-1)*8
-                    f.value = f.value | raw_val
+                    raw_val = bit32.lshift(raw_val, (idx-1)*8)
+                    f.value = bit32.bor(f.value, raw_val)
                 end
                 f.value = f.value/(f.scale or 1)
             end

@@ -1,5 +1,5 @@
 -- RotorFlight + ETHOS LUA configuration
-local LUA_VERSION = "2.0 - 240430"
+local LUA_VERSION = "2.0.1 - 240701"
 
 local uiStatus =
 {
@@ -25,25 +25,17 @@ local telemetryStatus =
     noTelemetry = 3
 }
 
-local uiMsp =
-{
-    reboot = 68,
-    eepromWrite = 250,
-}
-
 local uiState = uiStatus.init
 local prevUiState
 local pageState = pageStatus.display
--- local requestTimeout = 1.5   -- in seconds (originally 0.8)
 local currentPage = 1
 local currentField = 1
 local saveTS = 0
-local saveRetries = 0
 local popupMenuActive = 1
 local pageScrollY = 0
 local mainMenuScrollY = 0
 local telemetryState
-local saveTimeout, saveMaxRetries, PageFiles, Page, init, popupMenu, requestTimeout, rssiSensor
+local PageFiles, Page, init, popupMenu
 
 -- New variables for Ethos version
 local screenTitle = nil
@@ -52,144 +44,124 @@ local enterEvent = nil
 local enterEventTime
 local callCreate = true
 
-local lcdNeedsInvalidate = false
-
 --- Virtual key translations from Ethos to OpenTX
 local EVT_VIRTUAL_ENTER = 32
 local EVT_VIRTUAL_ENTER_LONG = 129
 local EVT_VIRTUAL_EXIT = 97
 local EVT_VIRTUAL_PREV = 99
+local EVT_VIRTUAL_PREV_LONG = 131
 local EVT_VIRTUAL_NEXT = 98
 
 local MENU_TITLE_BGCOLOR, ITEM_TEXT_SELECTED, ITEM_TEXT_NORMAL, ITEM_TEXT_EDITING
 
--- All RF2 globals should be stored in the rf2 table, to avoid conflict with globals from other scripts.
-rf2 = {
-    apiVersion = 0,
-    lastChangedServo = 1,
-    protocol = nil,
-    radio = nil,
-    sensor = nil,
-    dataBindFields = function()
-        for i=1,#Page.fields do
-            if #Page.values >= Page.minBytes then
-                local f = Page.fields[i]
-                if f.vals then
-                    f.value = 0
-                    for idx=1, #f.vals do
-                        local raw_val = Page.values[f.vals[idx]] or 0
-                        raw_val = raw_val<<((idx-1)*8)
-                        f.value = f.value|raw_val
-                    end
-                    local bits = #f.vals * 8
-                    if f.min and f.min < 0 and (f.value & (1 << (bits - 1)) ~= 0) then
-                        f.value = f.value - (2 ^ bits)
-                    end
-                    f.value = f.value/(f.scale or 1)
-                end
-            end
-        end
-    end,
-
-    -- OpenTX <-> Ethos mapping functions
-    sportTelemetryPop = function()
-        -- Pops a received SPORT packet from the queue. Please note that only packets using a data ID within 0x5000 to 0x50FF (frame ID == 0x10), as well as packets with a frame ID equal 0x32 (regardless of the data ID) will be passed to the LUA telemetry receive queue.
-        local frame = rf2.sensor:popFrame()
-        if frame == nil then
-            return nil, nil, nil, nil
-        end
-        -- physId = physical / remote sensor Id (aka sensorId)
-        --   0x00 for FPORT, 0x1B for SmartPort
-        -- primId = frame ID  (should be 0x32 for reply frames)
-        -- appId = data Id
-        return frame:physId(), frame:primId(), frame:appId(), frame:value()
-    end,
-
-    sportTelemetryPush = function(sensorId, frameId, dataId, value)
-        -- OpenTX:
-        -- When called without parameters, it will only return the status of the output buffer without sending anything.
-        --   Equivalent in Ethos may be:   sensor:idle() ???
-        -- @param sensorId  physical sensor ID
-        -- @param frameId   frame ID
-        -- @param dataId    data ID
-        -- @param value     value
-        -- @retval boolean  data queued in output buffer or not.
-        -- @retval nil      incorrect telemetry protocol.  (added in 2.3.4)
-        return rf2.sensor:pushFrame({physId=sensorId, primId=frameId, appId=dataId, value=value})
-    end,
-
-    getRSSI = function()
-        if rssiSensor ~= nil and rssiSensor:state() then
-            -- this will return the last known value if nothing is received
-            return rssiSensor:value()
-        end
-        -- return 0 if no telemetry signal to match OpenTX
-        return 0
-    end,
-
-    getTime = function()
-        return os.clock() * 100;
-    end,
-
-    loadScript = function(script)
-        return loadfile(script)
-    end,
-
-    getWindowSize = function()
-        return lcd.getWindowSize()
-        --return 784, 406
-        --return 472, 288
-        --return 472, 240
-    end
-}
-
-local function saveSettings()
-    if Page.values then
-        local payload = Page.values
-        if Page.preSave then
-            payload = Page.preSave(Page)
-        end
-        saveTS = os.clock()
-        if pageState == pageStatus.saving then
-            saveRetries = saveRetries + 1
-        else
-            pageState = pageStatus.saving
-            saveRetries = 0
-            print("Attempting to write page values...")
-        end
-        rf2.protocol.mspWrite(Page.write, payload)
-    end
-end
-
-local function eepromWrite()
-    saveTS = os.clock()
-    if pageState == pageStatus.eepromWrite then
-        saveRetries = saveRetries + 1
-    else
-        pageState = pageStatus.eepromWrite
-        saveRetries = 0
-        print("Attempting to write to eeprom...")
-    end
-    rf2.protocol.mspRead(uiMsp.eepromWrite)
-end
-
-local function rebootFc()
-    -- Only sent once.  I think a response may come back from FC if successful?
-    -- May want to either check for that and repeat if not, or check for loss of telemetry to confirm, etc.
-    -- TODO: Implement an auto-retry?  Right now if the command gets lost then there's just no reboot and no notice.
-    print("Attempting to reboot the FC (one shot)...")
-    saveTS = os.clock()
-    pageState = pageStatus.rebooting
-    rf2.protocol.mspRead(uiMsp.reboot)
-    -- https://github.com/rotorflight/rotorflight-firmware/blob/9a5b86d915df557ff320f30f1376cb8ce9377157/src/main/msp/msp.c#L1853
-end
+-- Initialize two global vars
+bit32 = assert(loadfile("/scripts/RF2/LIBS/bit32.lua"))()
+assert(loadfile("/scripts/RF2/rf2.lua"))()
 
 local function invalidatePages()
     Page = nil
     pageState = pageStatus.display
-    saveTS = 0
     collectgarbage()
-    lcdNeedsInvalidate = true
+    rf2.lcdNeedsInvalidate = true
+end
+
+local function rebootFc()
+    rf2.print("Attempting to reboot the FC...")
+    pageState = pageStatus.rebooting
+    rf2.mspQueue:add({
+        command = 68, -- MSP_REBOOT
+        processReply = function(self, buf)
+            invalidatePages()
+        end
+    })
+end
+
+local mspEepromWrite =
+{
+    command = 250, -- MSP_EEPROM_WRITE, fails when armed
+    processReply = function(self, buf)
+        if Page.reboot then
+            rebootFc()
+        end
+        invalidatePages()
+    end,
+    simulatorResponse = {}
+}
+
+rf2.settingsSaved = function()
+    -- check if this page requires writing to eeprom to save (most do)
+    if Page and Page.eepromWrite then
+        -- don't write again if we're already responding to earlier page.write()s
+        if pageState ~= pageStatus.eepromWrite then
+            pageState = pageStatus.eepromWrite
+            rf2.mspQueue:add(mspEepromWrite)
+        end
+    elseif pageState ~= pageStatus.eepromWrite then
+        -- If we're not already trying to write to eeprom from a previous save, then we're done.
+        invalidatePages()
+    end
+    rf2.lcdNeedsInvalidate = true
+end
+
+local mspSaveSettings =
+{
+    processReply = function(self, buf)
+        rf2.settingsSaved()
+    end
+}
+
+local function saveSettings()
+    if pageState ~= pageStatus.saving then
+        pageState = pageStatus.saving
+        saveTS = rf2.clock()
+
+        if Page.values then
+            local payload = Page.values
+            mspSaveSettings.command = Page.write
+            mspSaveSettings.payload = payload
+            mspSaveSettings.simulatorResponse = {}
+            rf2.mspQueue:add(mspSaveSettings)
+        elseif type(Page.write) == "function" then
+            Page.write(Page)
+        end
+
+        rf2.lcdNeedsInvalidate = true
+    end
+end
+
+local mspLoadSettings =
+{
+    processReply = function(self, buf)
+        rf2.print("Page is processing reply for cmd "..tostring(self.command).." len buf: "..#buf.." expected: "..Page.minBytes)
+        Page.values = buf
+        if Page.postRead then
+            Page.postRead(Page)
+        end
+        rf2.dataBindFields()
+        if Page.postLoad then
+            Page.postLoad(Page)
+        end
+        rf2.lcdNeedsInvalidate = true
+    end
+}
+
+rf2.readPage = function()
+    if type(Page.read) == "function" then
+        Page.read(Page)
+    else
+        mspLoadSettings.command = Page.read
+        mspLoadSettings.simulatorResponse = Page.simulatorResponse
+        rf2.mspQueue:add(mspLoadSettings)
+    end
+end
+
+local function requestPage()
+    if not Page.reqTS or Page.reqTS + rf2.protocol.pageReqTimeout <= rf2.clock() then
+        Page.reqTS = rf2.clock()
+        if Page.read then
+            rf2.readPage()
+        end
+    end
 end
 
 local function confirm(page)
@@ -198,54 +170,8 @@ local function confirm(page)
     invalidatePages()
     currentField = 1
     Page = assert(rf2.loadScript(page))()
-    lcdNeedsInvalidate = true
+    rf2.lcdNeedsInvalidate = true
     collectgarbage()
-end
-
--- Run lcd.invalidate() if anything actionable comes back from it.
-local function processMspReply(cmd,rx_buf,err)
-    if Page and rx_buf ~= nil then
-        print("Page is processing reply for cmd "..tostring(cmd).." len rx_buf: "..#rx_buf.." expected: "..Page.minBytes)
-    end
-    if not Page or not rx_buf then
-    elseif cmd == Page.write then
-        -- check if this page requires writing to eeprom to save (most do)
-        if Page.eepromWrite then
-            -- don't write again if we're already responding to earlier page.write()s
-            if pageState ~= pageStatus.eepromWrite then
-                eepromWrite()
-            end
-        elseif pageState ~= pageStatus.eepromWrite then
-            -- If we're not already trying to write to eeprom from a previous save, then we're done.
-            invalidatePages()
-        end
-        lcdNeedsInvalidate = true
-    elseif cmd == uiMsp.eepromWrite then
-        if Page.reboot then
-            rebootFc()
-        end
-        invalidatePages()
-    elseif (cmd == Page.read) and (#rx_buf > 0) then
-        --print("processMspReply:  Page.read and non-zero rx_buf")
-        Page.values = rx_buf
-        if Page.postRead then
-            Page.postRead(Page)
-        end
-        rf2.dataBindFields()
-        if Page.postLoad then
-            Page.postLoad(Page)
-            print("Postload executed")
-        end
-        lcdNeedsInvalidate = true
-    end
-end
-
-local function requestPage()
-    if Page.read and ((not Page.reqTS) or (Page.reqTS + requestTimeout <= os.clock())) then
-        --print("Trying requestPage()")
-        Page.reqTS = os.clock()
-        rf2.protocol.mspRead(Page.read)
-    end
 end
 
 local function createPopupMenu()
@@ -257,6 +183,28 @@ local function createPopupMenu()
     end
     popupMenu[#popupMenu + 1] = { t = "Reboot", f = rebootFc }
     popupMenu[#popupMenu + 1] = { t = "Acc Cal", f = function() confirm("/scripts/RF2/CONFIRM/acc_cal.lua") end }
+end
+
+rf2.dataBindFields = function()
+    for i=1,#Page.fields do
+        if #Page.values >= Page.minBytes then
+            local f = Page.fields[i]
+            if f.vals then
+                f.value = 0
+                for idx=1, #f.vals do
+                    local raw_val = Page.values[f.vals[idx]] or 0
+                    raw_val = raw_val<<((idx-1)*8)
+                    f.value = f.value|raw_val
+                end
+                local bits = #f.vals * 8
+                if f.min and f.min < 0 and (f.value & (1 << (bits - 1)) ~= 0) then
+                    f.value = f.value - (2 ^ bits)
+                end
+                f.value = f.value/(f.scale or 1)
+            end
+        end
+    end
+    rf2.lcdNeedsInvalidate = true
 end
 
 local function incMax(val, inc, base)
@@ -271,12 +219,6 @@ local function clipValue(val,min,max)
     end
     return val
 end
-
--- local function incPage(inc)
-    -- currentPage = incMax(currentPage, inc, #PageFiles)
-    -- currentField = 1
-    -- invalidatePages()
--- end
 
 local function incField(inc)
     if not Page then return end
@@ -293,22 +235,31 @@ end
 
 local function incValue(inc)
     local f = Page.fields[currentField]
-    local scale = f.scale or 1
-    local mult = f.mult or 1
-    f.value = clipValue(f.value + inc*mult/scale, (f.min or 0)/scale, (f.max or 255)/scale)
-    f.value = math.floor(f.value*scale/mult + 0.5)*mult/scale
-    for idx=1, #f.vals do
-        Page.values[f.vals[idx]] = math.floor(f.value*scale + 0.5)>>((idx-1)*8)
+    if f.data then
+        local scale = f.data.scale or 1
+        local mult = f.data.mult or 1
+        f.data.value = clipValue(f.data.value + inc*mult, (f.data.min or 0), (f.data.max or 255))
+        f.data.value = math.floor(f.data.value/mult + 0.5)*mult
+    else
+        local scale = f.scale or 1
+        local mult = f.mult or 1
+        f.value = clipValue(f.value + inc*mult/scale, (f.min or 0)/scale, (f.max or 255)/scale)
+        f.value = math.floor(f.value*scale/mult + 0.5)*mult/scale
+        if Page.values then
+            for idx=1, #f.vals do
+                Page.values[f.vals[idx]] = math.floor(f.value*scale + 0.5)>>((idx-1)*8)
+            end
+        end
     end
-    if f.upd and Page.values then
-        f.upd(Page)
+    if f.change then
+        f:change(Page)
     end
 end
 
 local function updateTelemetryState()
     local oldTelemetryState = telemetryState
 
-    if not rssiSensor then
+    if not rf2.rssiSensor then
         telemetryState = telemetryStatus.noSensor
     elseif rf2.getRSSI() == 0 then
         telemetryState = telemetryStatus.noTelemetry
@@ -317,7 +268,7 @@ local function updateTelemetryState()
     end
 
     if oldTelemetryState ~= telemetryState then
-        lcdNeedsInvalidate = true
+        rf2.lcdNeedsInvalidate = true
     end
 end
 
@@ -334,38 +285,32 @@ end
 
 -- CREATE:  Called once each time the system widget is opened by the user.
 local function create()
+    --rf2.print("create called")
     rf2.sensor = sport.getSensor({primId=0x32})
-    rssiSensor = system.getSource("RSSI")
-    if not rssiSensor then
-        rssiSensor = system.getSource("RSSI 2.4G")
-        if not rssiSensor then
-            rssiSensor = system.getSource("RSSI 900M")
-            if not rssiSensor then
-                rssiSensor = system.getSource("Rx RSSI1")
-                if not rssiSensor then
-                    rssiSensor = system.getSource("Rx RSSI2")
-                end
-            end
-        end
-    end
+    rf2.rssiSensor =
+        system.getSource("RSSI") or
+        system.getSource("RSSI 2.4G") or
+        system.getSource("RSSI 900M") or
+        system.getSource("Rx RSSI1") or
+        system.getSource("Rx RSSI2")
 
     --rf2.sensor:idle(false)
 
-    rf2.protocol = assert(rf2.loadScript("/scripts/RF2/protocols.lua"))()
-    rf2.radio = assert(rf2.loadScript("/scripts/RF2/radios.lua"))().msp
+    rf2.protocol = assert(rf2.loadScript("protocols.lua"))()
+    rf2.radio = assert(rf2.loadScript("radios.lua"))().msp
+    rf2.mspQueue = assert(rf2.loadScript("MSP/mspQueue.lua"))()
+    rf2.mspQueue.maxRetries = rf2.protocol.maxRetries
+    rf2.mspHelper = assert(rf2.loadScript("MSP/mspHelper.lua"))()
     assert(rf2.loadScript(rf2.protocol.mspTransport))()
-    assert(rf2.loadScript("/scripts/RF2/MSP/common.lua"))()
+    assert(rf2.loadScript("MSP/common.lua"))()
 
     -- Initial var setting
-    saveTimeout = rf2.protocol.saveTimeout
-    saveMaxRetries = rf2.protocol.saveMaxRetries
-    requestTimeout = rf2.protocol.pageReqTimeout
+    --saveTimeout = rf2.protocol.saveTimeout
     screenTitle = "Rotorflight "..LUA_VERSION
     uiState = uiStatus.init
     init = nil
     popupMenu = nil
     lastEvent = nil
-    rf2.apiVersion = 0
     callCreate = false
 
     return {}
@@ -383,13 +328,13 @@ local function wakeup(widget)
 	-- HACK for processing long enter events without processing normal enter events as well.
     -- A long enter event might follow some time (max 0.6s) after a normal enter event.
     -- Only process normal enter events after that time if no long enter event has been received.
-	if enterEvent ~= nil and (os.clock() - enterEventTime > 0.6) then
+	if enterEvent ~= nil and (rf2.clock() - enterEventTime > 0.6) then
         lastEvent = enterEvent
 		enterEvent = nil
 	end
 
     if (rf2.radio == nil or rf2.protocol == nil) then
-        print("Error:  wakeup() called but create must have failed!")
+        rf2.print("Error:  wakeup() called but create must have failed!")
         return 0
     end
 
@@ -399,17 +344,17 @@ local function wakeup(widget)
     if popupMenu then
         if lastEvent == EVT_VIRTUAL_EXIT then
             popupMenu = nil
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_PREV then
             incPopupMenu(-1)
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_NEXT then
             incPopupMenu(1)
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_ENTER then
             popupMenu[popupMenuActive].f()
             popupMenu = nil
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
         end
     elseif uiState == uiStatus.init then
         screenTitle = "Rotorflight "..LUA_VERSION
@@ -417,7 +362,7 @@ local function wakeup(widget)
         if init ~= nil then
             prevInit = init.t
         end
-        init = init or assert(rf2.loadScript("/scripts/RF2/ui_init.lua"))()
+        init = init or assert(rf2.loadScript("ui_init.lua"))()
         if lastEvent == EVT_VIRTUAL_EXIT then
 			lastEvent = nil
 			lcd.invalidate()
@@ -435,7 +380,7 @@ local function wakeup(widget)
             return 0
         end
         init = nil
-        PageFiles = assert(rf2.loadScript("/scripts/RF2/pages.lua"))()
+        PageFiles = assert(rf2.loadScript("pages.lua"))()
         invalidatePages()
         uiState = prevUiState or uiStatus.mainMenu
         prevUiState = nil
@@ -449,73 +394,51 @@ local function wakeup(widget)
             return 0
         elseif lastEvent == EVT_VIRTUAL_NEXT then
             incMainMenu(1)
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_PREV then
             incMainMenu(-1)
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_ENTER then
             prevUiState = uiStatus.mainMenu
             uiState = uiStatus.pages
             pageState = pageStatus.display  -- added in case we reboot from popup over main menu
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_ENTER_LONG then
-            print("Popup from main menu")
+            rf2.print("Popup from main menu")
             createPopupMenu()
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
         end
     elseif uiState == uiStatus.pages then
         if prevUiState ~= uiState then
-            lcdNeedsInvalidate = true
+            rf2.lcdNeedsInvalidate = true
             prevUiState = uiState
         end
-
         if pageState == pageStatus.saving then
-            if (saveTS + saveTimeout) < os.clock() then
-                if saveRetries < saveMaxRetries then
-                    saveSettings()
-                    lcdNeedsInvalidate = true
-                else
-                    print("Failed to write page values!")
-                    invalidatePages()
-                end
-                -- drop through to processMspReply to send MSP_SET and see if we've received a response to this yet.
-            end
-        elseif pageState == pageStatus.eepromWrite then
-            if (saveTS + saveTimeout) < os.clock() then
-                if saveRetries < saveMaxRetries then
-                    eepromWrite()
-                    lcdNeedsInvalidate = true
-                else
-                    print("Failed to write to eeprom!")
-                    invalidatePages()
-                end
-                -- drop through to processMspReply to send MSP_SET and see if we've received a response to this yet.
-            end
-        elseif pageState == pageStatus.rebooting then
-            -- TODO:  Rebooting is only a one-try shot.  Would be nice if it retried automatically.
-            if (saveTS + saveTimeout) < os.clock() then
+            if saveTS + rf2.protocol.saveTimeout < rf2.clock() then
+                --rf2.print("Save timeout!")
+                pageState = pageStatus.display
                 invalidatePages()
             end
-            -- drop through to processMspReply to send MSP_SET and see if we've received a response to this yet.
         elseif pageState == pageStatus.display then
             if lastEvent == EVT_VIRTUAL_PREV then
                 incField(-1)
-                lcdNeedsInvalidate = true
+                rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_NEXT then
                 incField(1)
-                lcdNeedsInvalidate = true
-            elseif lastEvent == EVT_VIRTUAL_ENTER then
-                if Page then
-                    local f = Page.fields[currentField]
-                    if Page.values and f.vals and Page.values[f.vals[#f.vals]] and not f.ro then
-                        pageState = pageStatus.editing
-                        lcdNeedsInvalidate = true
+                rf2.lcdNeedsInvalidate = true
+            elseif Page and lastEvent == EVT_VIRTUAL_ENTER then
+                local f = Page.fields[currentField]
+                if (Page.isReady or (Page.values and f.vals and Page.values[f.vals[#f.vals]])) and not f.ro then
+                    pageState = pageStatus.editing
+                    if Page.fields[currentField].preEdit then
+                        Page.fields[currentField]:preEdit(Page)
                     end
+                    rf2.lcdNeedsInvalidate = true
                 end
             elseif lastEvent == EVT_VIRTUAL_ENTER_LONG then
-                print("Popup from page")
+                rf2.print("Popup from page")
                 createPopupMenu()
-                lcdNeedsInvalidate = true
+                rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_EXIT then
                 invalidatePages()
                 currentField = 1
@@ -527,24 +450,28 @@ local function wakeup(widget)
         elseif pageState == pageStatus.editing then
             if ((lastEvent == EVT_VIRTUAL_EXIT) or (lastEvent == EVT_VIRTUAL_ENTER)) then
                 if Page.fields[currentField].postEdit then
-                    Page.fields[currentField].postEdit(Page)
+                    Page.fields[currentField]:postEdit(Page)
                 end
                 pageState = pageStatus.display
-				lcdNeedsInvalidate = true
+				rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_NEXT then
                 incValue(1)
-				lcdNeedsInvalidate = true
+				rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_PREV then
                 incValue(-1)
-				lcdNeedsInvalidate = true
+				rf2.lcdNeedsInvalidate = true
             end
         end
         if not Page then
-            Page = assert(rf2.loadScript("/scripts/RF2/PAGES/"..PageFiles[currentPage].script))()
+            Page = assert(rf2.loadScript("PAGES/"..PageFiles[currentPage].script))()
             collectgarbage()
         end
-        if not Page.values and pageState == pageStatus.display then
+        if not(Page.values or Page.isReady) and pageState == pageStatus.display then
             requestPage()
+        end
+        if Page and Page.timer and (not Page.lastTimeTimerFired or Page.lastTimeTimerFired + 0.5 < rf2.clock()) then
+            Page.timer(Page)
+            Page.lastTimeTimerFired = rf2.clock()
         end
     elseif uiState == uiStatus.confirm then
         if lastEvent == EVT_VIRTUAL_ENTER then
@@ -560,12 +487,12 @@ local function wakeup(widget)
 
     -- Process outgoing TX packets and check for incoming frames
     -- Should run every wakeup() cycle with a few exceptions where returns happen earlier
-    mspProcessTxQ()
-    processMspReply(mspPollReply())
+    rf2.mspQueue:processQueue()
+
     lastEvent = nil
 
-    if lcdNeedsInvalidate == true then
-        lcdNeedsInvalidate = false
+    if rf2.lcdNeedsInvalidate == true then
+        rf2.lcdNeedsInvalidate = false
         lcd.invalidate()
     end
 
@@ -575,17 +502,25 @@ end
 
 -- EVENT:  Called for button presses, scroll events, touch events, etc.
 local function event(widget, category, value, x, y)
-    print("Event received:", category, value, x, y)
+    --rf2.print("Event received: "..category.."  "..value)
     if category == EVT_KEY then
-        if value ==  97 then
+        if value == EVT_VIRTUAL_PREV_LONG then
+            rf2.print("Forcing exit")
+            if uiState == uiStatus.pages then
+                pageState = pageStatus.display
+                prevUiState = nil
+            end
+            system.exit()
+            return 0
+        elseif value ==  97 then
             -- Process enter later when it's clear it's not a long enter
             enterEvent = EVT_VIRTUAL_ENTER
-            enterEventTime = os.clock()
+            enterEventTime = rf2.clock()
             return true
         elseif value == 129 then
             -- Long enter
             -- Clear the normal enter and only process the long enter
-            print("Time elapsed since last enter: "..(os.clock() - enterEventTime))
+            rf2.print("Time elapsed since last enter: "..(rf2.clock() - enterEventTime))
             enterEvent = nil
             lastEvent = EVT_VIRTUAL_ENTER_LONG
             return true
@@ -638,10 +573,15 @@ local function drawScreen()
         local val = "---"
         for i=1,#Page.fields do
             local f = Page.fields[i]
-            if f.value then
-                if f.upd and Page.values then
-                    f.upd(Page)
+            if f.data and f.data.value then
+                val = f.data.value
+                if type(val) == "number" then
+                    val = val / (f.data.scale or 1)
                 end
+                if f.data.table and f.data.table[val] then
+                    val = f.data.table[val]
+                end
+            elseif f.value then
                 val = f.value
                 if f.table and f.table[f.value] then
                     val = f.table[f.value]
@@ -667,6 +607,7 @@ local function drawScreen()
                     lcd.color(ITEM_TEXT_NORMAL)
                 end
                 strVal = ""
+                --rf2.print("val is "..type(val))
                 if (type(val) == "string") then
                     strVal = val
                 elseif (type(val) == "number") then
@@ -689,7 +630,7 @@ end
 local function paint(widget)
 
     if (rf2.radio == nil or rf2.protocol == nil) then
-        print("Error:  paint() called, but create must have failed!")
+        rf2.print("Error:  paint() called, but create must have failed!")
         return
     end
 
@@ -701,12 +642,12 @@ local function paint(widget)
     local LCD_W, LCD_H = rf2.getWindowSize()
 
     if uiState == uiStatus.init then
-        print("painting uiState == uiStatus.init")
+        --rf2.print("painting uiState == uiStatus.init")
         lcd.color(ITEM_TEXT_NORMAL)
         lcd.font(FONT_STD)
         lcd.drawText(6, rf2.radio.yMinLimit, init.t)
     elseif uiState == uiStatus.mainMenu then
-        print("painting uiState == uiStatus.mainMenu")
+        --rf2.print("painting uiState == uiStatus.mainMenu")
         local yMinLim = rf2.radio.yMinLimit
         local yMaxLim = rf2.radio.yMaxLimit
         local lineSpacing = rf2.radio.lineSpacing
@@ -738,14 +679,8 @@ local function paint(widget)
             local saveMsg = ""
             if pageState == pageStatus.saving then
                 saveMsg = "Saving..."
-                if saveRetries > 0 then
-                    saveMsg = "Retry #"..string.format("%u",saveRetries)
-                end
             elseif pageState == pageStatus.eepromWrite then
                 saveMsg = "Updating..."
-                if saveRetries > 0 then
-                    saveMsg = "Retry #"..string.format("%u",saveRetries)
-                end
             elseif pageState == pageStatus.rebooting then
                 saveMsg = "Rebooting..."
             end
@@ -768,7 +703,7 @@ local function paint(widget)
     end
 
     if popupMenu then
-        print("painting popupMenu")
+        rf2.print("painting popupMenu")
         local x = rf2.radio.MenuBox.x
         local y = rf2.radio.MenuBox.y
         local w = rf2.radio.MenuBox.w
@@ -808,4 +743,4 @@ local function init()
     system.registerSystemTool({name=name, icon=icon, wakeup=wakeup, paint=paint, event=event})
 end
 
-return {init=init}
+return { init = init }
