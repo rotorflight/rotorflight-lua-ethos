@@ -24,7 +24,7 @@ function mspProcessTxQ()
         -- rf2.print("Sensor not idle... waiting to send cmd: "..tostring(mspLastReq))
         -- return true
     -- end
-    rf2.print("Sending mspTxBuf size "..tostring(#mspTxBuf).." at Idx "..tostring(mspTxIdx).." for cmd: "..tostring(mspLastReq))
+    --rf2.print("Sending mspTxBuf size "..tostring(#mspTxBuf).." at Idx "..tostring(mspTxIdx).." for cmd: "..tostring(mspLastReq))
     local payload = {}
     payload[1] = mspSeq + MSP_VERSION
     mspSeq = bit32.band(mspSeq + 1, 0x0F)

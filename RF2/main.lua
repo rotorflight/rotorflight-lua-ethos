@@ -68,13 +68,15 @@ local function invalidatePages()
 end
 
 local function rebootFc()
-    rf2.print("Attempting to reboot the FC...")
+    --rf2.print("Attempting to reboot the FC...")
     pageState = pageStatus.rebooting
+    rf2.lcdNeedsInvalidate = true
     rf2.mspQueue:add({
         command = 68, -- MSP_REBOOT
         processReply = function(self, buf)
             invalidatePages()
-        end
+        end,
+        simulatorResponse = {}
     })
 end
 
@@ -84,8 +86,9 @@ local mspEepromWrite =
     processReply = function(self, buf)
         if Page.reboot then
             rebootFc()
+        else
+            invalidatePages()
         end
-        invalidatePages()
     end,
     simulatorResponse = {}
 }
@@ -643,6 +646,7 @@ end
 
 -- PAINT:  Called when the screen or a portion of the screen is invalidated (timer, etc)
 local function paint(widget)
+    --rf2.print("uiState: "..uiState.." pageState: "..pageState)
 
     if (rf2.radio == nil or rf2.protocol == nil) then
         rf2.print("Error:  paint() called, but create must have failed!")
