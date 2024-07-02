@@ -47,13 +47,13 @@ local function onPostEditCenter(field, page)
 end
 
 fields[1] = { t = "Servo",      x = x,          y = inc.y(lineSpacing), sp = x + sp, min = 0,     max = 7,     table = { [0] = "ELEVATOR", "CYCL L", "CYCL R", "TAIL" }, postEdit = onChangeServo }
-fields[2] = { t = "Center",     x = x + indent, y = inc.y(lineSpacing), sp = x + sp, preEdit = onPreEditCenter, change = onChangeCenter, postEdit = onPostEditCenter }
-fields[3] = { t = "Min",        x = x + indent, y = inc.y(lineSpacing), sp = x + sp }
-fields[4] = { t = "Max",        x = x + indent, y = inc.y(lineSpacing), sp = x + sp }
-fields[5] = { t = "Scale neg",  x = x + indent, y = inc.y(lineSpacing), sp = x + sp }
-fields[6] = { t = "Scale pos",  x = x + indent, y = inc.y(lineSpacing), sp = x + sp }
-fields[7] = { t = "Rate",       x = x + indent, y = inc.y(lineSpacing), sp = x + sp }
-fields[8] = { t = "Speed",      x = x + indent, y = inc.y(lineSpacing), sp = x + sp }
+fields[2] = { t = "Center",     x = x + indent, y = inc.y(lineSpacing), sp = x + sp, id = "servoMid", preEdit = onPreEditCenter, change = onChangeCenter, postEdit = onPostEditCenter }
+fields[3] = { t = "Min",        x = x + indent, y = inc.y(lineSpacing), sp = x + sp, id = "servoMin" }
+fields[4] = { t = "Max",        x = x + indent, y = inc.y(lineSpacing), sp = x + sp, id = "servoMax" }
+fields[5] = { t = "Scale neg",  x = x + indent, y = inc.y(lineSpacing), sp = x + sp, id = "servoScaleNeg" }
+fields[6] = { t = "Scale pos",  x = x + indent, y = inc.y(lineSpacing), sp = x + sp, id = "servoScalePos" }
+fields[7] = { t = "Rate",       x = x + indent, y = inc.y(lineSpacing), sp = x + sp, id = "servoRate" }
+fields[8] = { t = "Speed",      x = x + indent, y = inc.y(lineSpacing), sp = x + sp, id = "servoSpeed" }
 
 local function receivedServoConfigurations(page, configs)
     servoConfigs = configs
@@ -84,5 +84,6 @@ return {
     reboot      = false,
     eepromWrite = true,
     labels      = labels,
-    fields      = fields
+    fields      = fields,
+    simulatorResponse = { 4, 180, 5, 12, 254, 244, 1, 244, 1, 244, 1, 144, 0, 0, 0, 1, 0, 160, 5, 12, 254, 244, 1, 244, 1, 244, 1, 144, 0, 0, 0, 1, 0, 14, 6, 12, 254, 244, 1, 244, 1, 244, 1, 144, 0, 0, 0, 0, 0, 120, 5, 212, 254, 44, 1, 244, 1, 244, 1, 77, 1, 0, 0, 0, 0},
 }

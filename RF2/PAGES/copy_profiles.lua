@@ -30,6 +30,7 @@ return {
     minBytes    = 3,
     labels      = labels,
     fields      = fields,
+    simulatorResponse = { 252, 1, 127, 0, 35, 0, 0, 0, 0, 0, 0, 122, 1, 182, 0, 0, 26, 0, 0, 0, 0, 0, 2, 0, 6, 0, 6, 1, 4, 1 },
     onProcessedMspStatus = function(self, status)
         fcStatus = status
         -- prepare page for MSP_COPY_PROFILE

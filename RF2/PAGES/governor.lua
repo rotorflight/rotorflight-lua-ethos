@@ -16,21 +16,21 @@ local governorConfig = {}
 x = margin
 y = yMinLim - tableSpacing.header
 
-fields[1] = { t = "Mode",                 x = x, y = inc.y(lineSpacing), sp = x + sp }
-fields[2] = { t = "Handover throttle%",   x = x, y = inc.y(lineSpacing), sp = x + sp }
-fields[3] = { t = "Startup time",         x = x, y = inc.y(lineSpacing), sp = x + sp }
-fields[4] = { t = "Spoolup time",         x = x, y = inc.y(lineSpacing), sp = x + sp }
-fields[5] = { t = "Tracking time",        x = x, y = inc.y(lineSpacing), sp = x + sp }
-fields[6] = { t = "Recovery time",        x = x, y = inc.y(lineSpacing), sp = x + sp }
-fields[7] = { t = "AR bailout time",      x = x, y = inc.y(lineSpacing), sp = x + sp }
-fields[8] = { t = "AR timeout",           x = x, y = inc.y(lineSpacing), sp = x + sp }
-fields[9] = { t = "AR min entry time",    x = x, y = inc.y(lineSpacing), sp = x + sp }
-fields[10] = { t = "Zero throttle TO",    x = x, y = inc.y(lineSpacing), sp = x + sp }
-fields[11] = { t = "HS signal timeout",   x = x, y = inc.y(lineSpacing), sp = x + sp }
-fields[12] = { t = "HS filter cutoff",    x = x, y = inc.y(lineSpacing), sp = x + sp }
-fields[13] = { t = "Volt. filter cutoff", x = x, y = inc.y(lineSpacing), sp = x + sp }
-fields[14] = { t = "TTA bandwidth",       x = x, y = inc.y(lineSpacing), sp = x + sp }
-fields[15] = { t = "Precomp bandwidth",   x = x, y = inc.y(lineSpacing), sp = x + sp }
+fields[1] = { t = "Mode",                 x = x, y = inc.y(lineSpacing), sp = x + sp, id = "govMode" }
+fields[2] = { t = "Handover throttle%",   x = x, y = inc.y(lineSpacing), sp = x + sp, id = "govHandoverThrottle" }
+fields[3] = { t = "Startup time",         x = x, y = inc.y(lineSpacing), sp = x + sp, id = "govStartupTime" }
+fields[4] = { t = "Spoolup time",         x = x, y = inc.y(lineSpacing), sp = x + sp, id = "govSpoolupTime" }
+fields[5] = { t = "Tracking time",        x = x, y = inc.y(lineSpacing), sp = x + sp, id = "govTrackingTime" }
+fields[6] = { t = "Recovery time",        x = x, y = inc.y(lineSpacing), sp = x + sp, id = "govRecoveryTime" }
+fields[7] = { t = "AR bailout time",      x = x, y = inc.y(lineSpacing), sp = x + sp, id = "govAutoBailoutTime" }
+fields[8] = { t = "AR timeout",           x = x, y = inc.y(lineSpacing), sp = x + sp, id = "govAutoTimeout" }
+fields[9] = { t = "AR min entry time",    x = x, y = inc.y(lineSpacing), sp = x + sp, id = "govAutoMinEntryTime" }
+fields[10] = { t = "Zero throttle TO",    x = x, y = inc.y(lineSpacing), sp = x + sp, id = "govZeroThrottleTimeout" }
+fields[11] = { t = "HS signal timeout",   x = x, y = inc.y(lineSpacing), sp = x + sp, id = "govLostHeadspeedTimeout" }
+fields[12] = { t = "HS filter cutoff",    x = x, y = inc.y(lineSpacing), sp = x + sp, id = "govHeadspeedFilterHz" }
+fields[13] = { t = "Volt. filter cutoff", x = x, y = inc.y(lineSpacing), sp = x + sp, id = "govVoltageFilterHz" }
+fields[14] = { t = "TTA bandwidth",       x = x, y = inc.y(lineSpacing), sp = x + sp, id = "govTTAFilterHz" }
+fields[15] = { t = "Precomp bandwidth",   x = x, y = inc.y(lineSpacing), sp = x + sp, id = "govFFFilterHz" }
 
 local function setValues()
     fields[1].data = governorConfig.gov_mode
@@ -70,4 +70,5 @@ return {
     eepromWrite = true,
     labels      = labels,
     fields      = fields,
+    simulatorResponse = { 3, 100, 0, 100, 0, 20, 0, 20, 0, 30, 0, 10, 0, 0, 0, 0, 0, 50, 0, 10, 5, 10, 0, 10 }
 }

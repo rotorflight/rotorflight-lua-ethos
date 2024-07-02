@@ -1,5 +1,5 @@
 -- RotorFlight + ETHOS LUA configuration
-local LUA_VERSION = "2.0.0 - 240625"
+local LUA_VERSION = "2.0.1 - 240701"
 
 local uiStatus =
 {
@@ -36,6 +36,8 @@ local pageScrollY = 0
 local mainMenuScrollY = 0
 local telemetryState
 local PageFiles, Page, init, popupMenu
+local scrollSpeedTS = 0
+local scrollSpeedMultiplier = 1
 
 -- New variables for Ethos version
 local screenTitle = nil
@@ -455,10 +457,10 @@ local function wakeup(widget)
                 pageState = pageStatus.display
 				rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_NEXT then
-                incValue(1)
+                incValue(1 * scrollSpeedMultiplier)
 				rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_PREV then
-                incValue(-1)
+                incValue(-1 * scrollSpeedMultiplier)
 				rf2.lcdNeedsInvalidate = true
             end
         end
@@ -504,6 +506,19 @@ end
 local function event(widget, category, value, x, y)
     --rf2.print("Event received: "..category.."  "..value)
     if category == EVT_KEY then
+        if value == 4099 or value == 4100 then
+            local scrollSpeed = rf2.clock() - scrollSpeedTS
+            --rf2.print(scrollSpeed)
+            if scrollSpeed < 0.05 then
+                scrollSpeedMultiplier = 10
+            elseif scrollSpeed < 0.1 then
+                scrollSpeedMultiplier = 5
+            else
+                scrollSpeedMultiplier = 1
+            end
+            scrollSpeedTS = rf2.clock()
+        end
+
         if value == EVT_VIRTUAL_PREV_LONG then
             rf2.print("Forcing exit")
             if uiState == uiStatus.pages then
