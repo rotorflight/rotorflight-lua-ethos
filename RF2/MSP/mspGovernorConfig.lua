@@ -21,23 +21,7 @@ local function getGovernorConfig(callback, callbackParam)
             config.gov_ff_filter = { value = rf2.mspHelper.readU8(buf), min = 0, max = 250 }
             callback(callbackParam, config)
         end,
-        simulatorResponse = {
-            1, -- mode
-            200, 0, --startup
-            100, 0, --spoolup
-            20, 0,  --tracking
-            20, 0,  --recovery
-            30, 0,  --zero throttle to
-            10, 0,  --lost headspeed to
-            0, 0,   --ar to
-            0, 0,   --ar bailout to
-            50, 0,  --ar min entry time
-            20,     --gov handover
-            5,      --pwr filter
-            10,     --rpm filter
-            0,      --tta filter
-            10      --ff filter
-            }
+        simulatorResponse = { 3, 200, 0, 100, 0, 20, 0, 20, 0, 30, 0, 10, 0, 0, 0, 0, 0, 50, 0, 10, 5, 10, 0, 10 }
     }
     rf2.mspQueue:add(message)
 end

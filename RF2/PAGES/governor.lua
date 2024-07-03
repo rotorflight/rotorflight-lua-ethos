@@ -54,7 +54,7 @@ local function receivedGovernorConfig(page, config)
     governorConfig = config
     setValues()
     rf2.lcdNeedsInvalidate = true
-    page.isReady = true -- TODO: use pageStatus instead?
+    page.isReady = true
 end
 
 return {
@@ -69,6 +69,5 @@ return {
     reboot      = true,
     eepromWrite = true,
     labels      = labels,
-    fields      = fields,
-    simulatorResponse = { 3, 100, 0, 100, 0, 20, 0, 20, 0, 30, 0, 10, 0, 0, 0, 0, 0, 50, 0, 10, 5, 10, 0, 10 }
+    fields      = fields
 }
