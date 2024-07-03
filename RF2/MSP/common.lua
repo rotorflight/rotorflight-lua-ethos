@@ -24,7 +24,7 @@ function mspProcessTxQ()
         -- rf2.print("Sensor not idle... waiting to send cmd: "..tostring(mspLastReq))
         -- return true
     -- end
-    rf2.print("Sending mspTxBuf size "..tostring(#mspTxBuf).." at Idx "..tostring(mspTxIdx).." for cmd: "..tostring(mspLastReq))
+    --rf2.print("Sending mspTxBuf size "..tostring(#mspTxBuf).." at Idx "..tostring(mspTxIdx).." for cmd: "..tostring(mspLastReq))
     local payload = {}
     payload[1] = mspSeq + MSP_VERSION
     mspSeq = bit32.band(mspSeq + 1, 0x0F)
@@ -80,6 +80,7 @@ local function mspReceivedReply(payload)
     local start = bit32.btest(status, 0x10)
     local seq = bit32.band(status, 0x0F)
     idx = idx + 1
+    --rf2.print("payload length: "..#payload)
     --rf2.print(" msp sequence #:  "..string.format("%u",seq))
     if start then
         -- start flag set
@@ -96,6 +97,7 @@ local function mspReceivedReply(payload)
         mspRxCRC = bit32.bxor(mspRxSize, mspRxReq)
         if mspRxReq == mspLastReq then
             mspStarted = true
+            --rf2.print("Started cmd "..mspLastReq)
         end
     elseif not mspStarted then
 		rf2.print("  mspReceivedReply: missing Start flag")
