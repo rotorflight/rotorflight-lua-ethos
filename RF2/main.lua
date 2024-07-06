@@ -296,6 +296,7 @@ local function create()
         system.getSource("RSSI") or
         system.getSource("RSSI 2.4G") or
         system.getSource("RSSI 900M") or
+        system.getSource("RSSI Int") or
         system.getSource("Rx RSSI1") or
         system.getSource("Rx RSSI2")
 
