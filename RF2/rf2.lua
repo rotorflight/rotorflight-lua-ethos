@@ -64,7 +64,7 @@ rf2 = {
     end,
 
     log = function(str)
-        local f = io.open("/LOGS/rf2.log", 'a')
+        local f = io.open("/rf2.log", 'a')
         io.write(f, tostring(str) .. "\n")
         io.close(f)
     end,
