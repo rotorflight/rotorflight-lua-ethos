@@ -525,10 +525,7 @@ local function event(widget, category, value, x, y)
 
         if value == EVT_VIRTUAL_PREV_LONG then
             rf2.print("Forcing exit")
-            if uiState == uiStatus.pages then
-                pageState = pageStatus.display
-                prevUiState = nil
-            end
+            invalidatePages()
             system.exit()
             return 0
         elseif value ==  97 then
@@ -649,8 +646,8 @@ end
 local function paint(widget)
     --rf2.print("uiState: "..uiState.." pageState: "..pageState)
 
-    if (rf2.radio == nil or rf2.protocol == nil) then
-        rf2.print("Error:  paint() called, but create must have failed!")
+    if not rf2 or not rf2.radio or not rf2.protocol then
+        print("Error:  paint() called, but create must have failed!")
         return
     end
 
@@ -661,7 +658,7 @@ local function paint(widget)
 
     local LCD_W, LCD_H = rf2.getWindowSize()
 
-    if uiState == uiStatus.init then
+    if init and uiState == uiStatus.init then
         --rf2.print("painting uiState == uiStatus.init")
         lcd.color(ITEM_TEXT_NORMAL)
         lcd.font(FONT_STD)
