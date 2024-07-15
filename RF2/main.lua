@@ -1,5 +1,5 @@
 -- RotorFlight + ETHOS LUA configuration
-local LUA_VERSION = "2.0.1 - 240701"
+local LUA_VERSION = "2.1.0 - 240715"
 
 local uiStatus =
 {
@@ -38,6 +38,7 @@ local telemetryState
 local PageFiles, Page, init, popupMenu
 local scrollSpeedTS = 0
 local scrollSpeedMultiplier = 1
+local displayMessage
 
 -- New variables for Ethos version
 local screenTitle = nil
@@ -126,6 +127,13 @@ local function saveSettings()
             mspSaveSettings.payload = payload
             mspSaveSettings.simulatorResponse = {}
             rf2.mspQueue:add(mspSaveSettings)
+            rf2.mspQueue.errorHandler = function()
+                displayMessage = {
+                    title = "Save error",
+                    text = "Make sure your heli is disarmed."
+                }
+                rf2.lcdNeedsInvalidate = true
+            end
         elseif type(Page.write) == "function" then
             Page.write(Page)
         end
@@ -347,7 +355,12 @@ local function wakeup(widget)
     updateTelemetryState()
 
     -- run_ui(event)
-    if popupMenu then
+    if displayMessage then
+        if lastEvent == EVT_VIRTUAL_EXIT or lastEvent == EVT_VIRTUAL_ENTER then
+            displayMessage = nil
+            invalidatePages()
+        end
+    elseif popupMenu then
         if lastEvent == EVT_VIRTUAL_EXIT then
             popupMenu = nil
             rf2.lcdNeedsInvalidate = true
@@ -371,8 +384,8 @@ local function wakeup(widget)
         init = init or assert(rf2.loadScript("ui_init.lua"))()
         if lastEvent == EVT_VIRTUAL_EXIT then
 			lastEvent = nil
-			lcd.invalidate()
             callCreate = true
+			invalidatePages()
             system.exit()
             return 0
         end
@@ -513,9 +526,7 @@ local function event(widget, category, value, x, y)
         if value == 4099 or value == 4100 then
             local scrollSpeed = rf2.clock() - scrollSpeedTS
             --rf2.print(scrollSpeed)
-            if scrollSpeed < 0.05 then
-                scrollSpeedMultiplier = 10
-            elseif scrollSpeed < 0.1 then
+            if scrollSpeed < 0.075 then
                 scrollSpeedMultiplier = 5
             else
                 scrollSpeedMultiplier = 1
@@ -642,6 +653,22 @@ local function drawScreen()
     end
 end
 
+local function drawMessage(title, message)
+    local LCD_W, LCD_H = rf2.getWindowSize()
+
+    lcd.color(MENU_TITLE_BGCOLOR)
+    lcd.drawFilledRectangle(50, 40, LCD_W - 100, 90)
+    lcd.color(ITEM_TEXT_NORMAL)
+    lcd.font(FONT_L)
+    lcd.drawText(70, 50, title)
+
+    lcd.color(MENU_TITLE_BGCOLOR)
+    lcd.drawFilledRectangle(50, 90, LCD_W - 100, LCD_H - 100)
+    lcd.font(FONT_STD)
+    lcd.color(ITEM_TEXT_NORMAL)
+    lcd.drawText(70, 100, message)
+end
+
 -- PAINT:  Called when the screen or a portion of the screen is invalidated (timer, etc)
 local function paint(widget)
     --rf2.print("uiState: "..uiState.." pageState: "..pageState)
@@ -658,7 +685,9 @@ local function paint(widget)
 
     local LCD_W, LCD_H = rf2.getWindowSize()
 
-    if init and uiState == uiStatus.init then
+    if displayMessage then
+        drawMessage(displayMessage.title, displayMessage.text)
+    elseif init and uiState == uiStatus.init then
         --rf2.print("painting uiState == uiStatus.init")
         lcd.color(ITEM_TEXT_NORMAL)
         lcd.font(FONT_STD)
