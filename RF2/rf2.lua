@@ -75,4 +75,6 @@ rf2 = {
     end,
 
     clock = os.clock,
+
+    apiVersion = nil
 }
