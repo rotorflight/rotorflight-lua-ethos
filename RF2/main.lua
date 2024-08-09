@@ -1,5 +1,5 @@
 -- RotorFlight + ETHOS LUA configuration
-local LUA_VERSION = "2.1.0 - 240721"
+local LUA_VERSION = "2.1.0 - 240809"
 
 local uiStatus =
 {
@@ -16,6 +16,7 @@ local pageStatus =
     saving  = 3,
     eepromWrite = 4,
     rebooting = 5,
+    waiting = 6
 }
 
 local telemetryStatus =
@@ -39,6 +40,7 @@ local PageFiles, Page, init, popupMenu
 local scrollSpeedTS = 0
 local scrollSpeedMultiplier = 1
 local displayMessage
+local waitMessage
 
 -- New variables for Ethos version
 local screenTitle = nil
@@ -68,6 +70,25 @@ local function invalidatePages()
     rf2.lcdNeedsInvalidate = true
 end
 
+rf2.reloadPage = invalidatePages
+
+rf2.setWaitMessage = function(message)
+    pageState = pageStatus.waiting
+    waitMessage = message
+    rf2.lcdNeedsInvalidate = true
+end
+
+rf2.clearWaitMessage = function()
+    pageState = pageStatus.display
+    waitMessage = nil
+    rf2.lcdNeedsInvalidate = true
+end
+
+rf2.displayMessage = function(title, text)
+    displayMessage = { title = title, text = text }
+    rf2.lcdNeedsInvalidate = true
+end
+
 local function rebootFc()
     --rf2.print("Attempting to reboot the FC...")
     pageState = pageStatus.rebooting
@@ -90,6 +111,9 @@ local mspEepromWrite =
         else
             invalidatePages()
         end
+    end,
+    errorHandler = function(self)
+        rf2.displayMessage("Save error", "Make sure your heli is disarmed.")
     end,
     simulatorResponse = {}
 }
@@ -127,13 +151,6 @@ local function saveSettings()
             mspSaveSettings.payload = payload
             mspSaveSettings.simulatorResponse = {}
             rf2.mspQueue:add(mspSaveSettings)
-            rf2.mspQueue.errorHandler = function()
-                displayMessage = {
-                    title = "Save error",
-                    text = "Make sure your heli is disarmed."
-                }
-                rf2.lcdNeedsInvalidate = true
-            end
         elseif type(Page.write) == "function" then
             Page.write(Page)
         end
@@ -283,6 +300,10 @@ local function updateTelemetryState()
     if oldTelemetryState ~= telemetryState then
         rf2.lcdNeedsInvalidate = true
     end
+end
+
+local function fieldIsButton(f)
+    return f.t and string.sub(f.t, 1, 1) == "[" and not (f.data or f.value)
 end
 
 ---
@@ -447,8 +468,10 @@ local function wakeup(widget)
                 rf2.lcdNeedsInvalidate = true
             elseif Page and lastEvent == EVT_VIRTUAL_ENTER then
                 local f = Page.fields[currentField]
-                if (Page.isReady or (Page.values and f.vals and Page.values[f.vals[#f.vals]])) and not f.ro then
-                    pageState = pageStatus.editing
+                if (Page.isReady or (Page.values and f.vals and Page.values[f.vals[#f.vals]])) and not f.readOnly then
+                    if not fieldIsButton(Page.fields[currentField]) then
+                        pageState = pageStatus.editing
+                    end
                     if Page.fields[currentField].preEdit then
                         Page.fields[currentField]:preEdit(Page)
                     end
@@ -462,6 +485,10 @@ local function wakeup(widget)
                 invalidatePages()
                 currentField = 1
                 uiState = uiStatus.mainMenu
+                if rf2.logfile then
+                    io.close(rf2.logfile)
+                    rf2.logfile = nil
+                end
                 lcd.invalidate()
 				lastEvent = nil
                 return 0
@@ -481,16 +508,16 @@ local function wakeup(widget)
 				rf2.lcdNeedsInvalidate = true
             end
         end
+        if Page and Page.timer and (not Page.lastTimeTimerFired or Page.lastTimeTimerFired + 0.5 < rf2.clock()) then
+            Page.timer(Page)
+            Page.lastTimeTimerFired = rf2.clock()
+        end
         if not Page then
             Page = assert(rf2.loadScript("PAGES/"..PageFiles[currentPage].script))()
             collectgarbage()
         end
         if not(Page.values or Page.isReady) and pageState == pageStatus.display then
             requestPage()
-        end
-        if Page and Page.timer and (not Page.lastTimeTimerFired or Page.lastTimeTimerFired + 0.5 < rf2.clock()) then
-            Page.timer(Page)
-            Page.lastTimeTimerFired = rf2.clock()
         end
     elseif uiState == uiStatus.confirm then
         if lastEvent == EVT_VIRTUAL_ENTER then
@@ -526,7 +553,7 @@ local function event(widget, category, value, x, y)
         if value == 4099 or value == 4100 then
             local scrollSpeed = rf2.clock() - scrollSpeedTS
             --rf2.print(scrollSpeed)
-            if scrollSpeed < 0.075 then
+            if scrollSpeed < 0.1 then
                 scrollSpeedMultiplier = 5
             else
                 scrollSpeedMultiplier = 1
@@ -592,13 +619,13 @@ local function drawScreen()
             local f = Page.labels[i]
             local y = f.y - pageScrollY
             if y >= 0 and y <= LCD_H then
-                lcd.font(FONT_BOLD)
+                lcd.font((f.bold == false and FONT_STD) or FONT_BOLD)
                 lcd.color(ITEM_TEXT_NORMAL)
                 lcd.drawText(f.x, y, f.t)
             end
         end
-        local val = "---"
         for i=1,#Page.fields do
+            local val = "---"
             local f = Page.fields[i]
             if f.data and f.data.value then
                 val = f.data.value
@@ -616,7 +643,9 @@ local function drawScreen()
             end
             local y = f.y - pageScrollY
             if y >= 0 and y <= LCD_H then
-                if f.t then
+                if fieldIsButton(f) then
+                    val = f.t
+                elseif f.t then
                     lcd.font(FONT_STD)
                     lcd.color(ITEM_TEXT_NORMAL)
                     lcd.drawText(f.x, y, f.t)
@@ -729,6 +758,8 @@ local function paint(widget)
                 saveMsg = "Updating..."
             elseif pageState == pageStatus.rebooting then
                 saveMsg = "Rebooting..."
+            elseif pageState == pageStatus.waiting then
+                saveMsg = waitMessage
             end
             lcd.color(MENU_TITLE_BGCOLOR)
             lcd.drawFilledRectangle(rf2.radio.SaveBox.x,rf2.radio.SaveBox.y,rf2.radio.SaveBox.w,rf2.radio.SaveBox.h)
