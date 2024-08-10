@@ -351,31 +351,9 @@ local function create()
     return {}
 end
 
+local function processEvent()
+    rf2.lcdNeedsInvalidate = true
 
--- WAKEUP:  Called every ~30-50ms by the main Ethos software loop
-local function wakeup(widget)
-    if callCreate then
-        -- HACK for enabling the rotary wheel, see https://github.com/FrSkyRC/ETHOS-Feedback-Community/issues/2292
-        -- TLDR: don't specify create in system.registerSystemTool but call it here.
-        create()
-    end
-
-	-- HACK for processing long enter events without processing normal enter events as well.
-    -- A long enter event might follow some time (max 0.6s) after a normal enter event.
-    -- Only process normal enter events after that time if no long enter event has been received.
-	if enterEvent ~= nil and (rf2.clock() - enterEventTime > 0.6) then
-        lastEvent = enterEvent
-		enterEvent = nil
-	end
-
-    if (rf2.radio == nil or rf2.protocol == nil) then
-        rf2.print("Error:  wakeup() called but create must have failed!")
-        return 0
-    end
-
-    updateTelemetryState()
-
-    -- run_ui(event)
     if displayMessage then
         if lastEvent == EVT_VIRTUAL_EXIT or lastEvent == EVT_VIRTUAL_ENTER then
             displayMessage = nil
@@ -453,13 +431,7 @@ local function wakeup(widget)
             rf2.lcdNeedsInvalidate = true
             prevUiState = uiState
         end
-        if pageState == pageStatus.saving then
-            if saveTS + rf2.protocol.saveTimeout < rf2.clock() then
-                --rf2.print("Save timeout!")
-                pageState = pageStatus.display
-                invalidatePages()
-            end
-        elseif pageState == pageStatus.display then
+        if pageState == pageStatus.display then
             if lastEvent == EVT_VIRTUAL_PREV then
                 incField(-1)
                 rf2.lcdNeedsInvalidate = true
@@ -508,6 +480,53 @@ local function wakeup(widget)
 				rf2.lcdNeedsInvalidate = true
             end
         end
+    elseif uiState == uiStatus.confirm then
+        if lastEvent == EVT_VIRTUAL_ENTER then
+            uiState = uiStatus.init
+            init = Page.init
+            invalidatePages()
+        elseif lastEvent == EVT_VIRTUAL_EXIT then
+            invalidatePages()
+            uiState = prevUiState
+            prevUiState = nil
+        end
+    end
+end
+
+-- WAKEUP:  Called every ~30-50ms by the main Ethos software loop
+local function wakeup(widget)
+    if callCreate then
+        -- HACK for enabling the rotary wheel, see https://github.com/FrSkyRC/ETHOS-Feedback-Community/issues/2292
+        -- TLDR: don't specify create in system.registerSystemTool but call it here.
+        create()
+        processEvent()
+    end
+
+	-- HACK for processing long enter events without processing normal enter events as well.
+    -- A long enter event might follow some time (max 0.6s) after a normal enter event.
+    -- Only process normal enter events after that time if no long enter event has been received.
+	if enterEvent ~= nil and (rf2.clock() - enterEventTime > 0.6) then
+        lastEvent = enterEvent
+		enterEvent = nil
+        processEvent()
+	end
+
+    if (rf2.radio == nil or rf2.protocol == nil) then
+        rf2.print("Error:  wakeup() called but create must have failed!")
+        return 0
+    end
+
+    updateTelemetryState()
+
+    -- run_ui(event)
+    if  uiState == uiStatus.pages then
+        if pageState == pageStatus.saving then
+            if saveTS + rf2.protocol.saveTimeout < rf2.clock() then
+                --rf2.print("Save timeout!")
+                pageState = pageStatus.display
+                invalidatePages()
+            end
+        end
         if Page and Page.timer and (not Page.lastTimeTimerFired or Page.lastTimeTimerFired + 0.5 < rf2.clock()) then
             Page.timer(Page)
             Page.lastTimeTimerFired = rf2.clock()
@@ -518,16 +537,6 @@ local function wakeup(widget)
         end
         if not(Page.values or Page.isReady) and pageState == pageStatus.display then
             requestPage()
-        end
-    elseif uiState == uiStatus.confirm then
-        if lastEvent == EVT_VIRTUAL_ENTER then
-            uiState = uiStatus.init
-            init = Page.init
-            invalidatePages()
-        elseif lastEvent == EVT_VIRTUAL_EXIT then
-            invalidatePages()
-            uiState = prevUiState
-            prevUiState = nil
         end
     end
 
@@ -548,7 +557,7 @@ end
 
 -- EVENT:  Called for button presses, scroll events, touch events, etc.
 local function event(widget, category, value, x, y)
-    --rf2.print("Event received: "..category.."  "..value)
+    rf2.print("Event received: "..category.."  "..value)
     if category == EVT_KEY then
         if value == 4099 or value == 4100 then
             local scrollSpeed = rf2.clock() - scrollSpeedTS
@@ -564,12 +573,14 @@ local function event(widget, category, value, x, y)
         if value == EVT_VIRTUAL_PREV_LONG then
             rf2.print("Forcing exit")
             invalidatePages()
+            uiState = uiStatus.mainMenu
             system.exit()
             return 0
         elseif value ==  97 then
             -- Process enter later when it's clear it's not a long enter
             enterEvent = EVT_VIRTUAL_ENTER
             enterEventTime = rf2.clock()
+            processEvent()
             return true
         elseif value == 129 then
             -- Long enter
@@ -577,24 +588,28 @@ local function event(widget, category, value, x, y)
             rf2.print("Time elapsed since last enter: "..(rf2.clock() - enterEventTime))
             enterEvent = nil
             lastEvent = EVT_VIRTUAL_ENTER_LONG
+            processEvent()
             return true
         elseif value == 35 then
             -- Rtn released.
             if not enterEvent then
                 lastEvent = EVT_VIRTUAL_EXIT
             end
+            processEvent()
             return true
         elseif value ==  4099 then
             -- rotary left
             if not enterEvent then
                 lastEvent = EVT_VIRTUAL_PREV
             end
+            processEvent()
             return true
         elseif value ==  4100 then
             -- rotary right
             if not enterEvent then
                 lastEvent = EVT_VIRTUAL_NEXT
             end
+            processEvent()
             return true
         end
     end
@@ -602,7 +617,7 @@ local function event(widget, category, value, x, y)
     return false
 end
 
-local function drawScreen()
+local function drawPage()
     local LCD_W, LCD_H = rf2.getWindowSize()
     if Page then
         local yMinLim = rf2.radio.yMinLimit
@@ -749,7 +764,7 @@ local function paint(widget)
             end
         end
     elseif uiState == uiStatus.pages then
-        drawScreen()
+        drawPage()
         if pageState >= pageStatus.saving then
             local saveMsg = ""
             if pageState == pageStatus.saving then
@@ -768,7 +783,7 @@ local function paint(widget)
             lcd.drawText(rf2.radio.SaveBox.x+rf2.radio.SaveBox.x_offset,rf2.radio.SaveBox.y+rf2.radio.SaveBox.h_offset,saveMsg)
         end
     elseif uiState == uiStatus.confirm then
-        drawScreen()
+        drawPage()
     end
 
     if screenTitle then
