@@ -362,17 +362,13 @@ local function processEvent()
     elseif popupMenu then
         if lastEvent == EVT_VIRTUAL_EXIT then
             popupMenu = nil
-            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_PREV then
             incPopupMenu(-1)
-            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_NEXT then
             incPopupMenu(1)
-            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_ENTER then
             popupMenu[popupMenuActive].f()
             popupMenu = nil
-            rf2.lcdNeedsInvalidate = true
         end
     elseif uiState == uiStatus.init then
         screenTitle = "Rotorflight "..LUA_VERSION
@@ -403,41 +399,37 @@ local function processEvent()
         uiState = prevUiState or uiStatus.mainMenu
         prevUiState = nil
     elseif uiState == uiStatus.mainMenu then
-        screenTitle = "Rotorflight "..LUA_VERSION
         if lastEvent == EVT_VIRTUAL_EXIT then
 			lastEvent = nil
 			lcd.invalidate()
             callCreate = true
+            if rf2.logfile then
+                io.close(rf2.logfile)
+                rf2.logfile = nil
+            end
             system.exit()
             return 0
         elseif lastEvent == EVT_VIRTUAL_NEXT then
             incMainMenu(1)
-            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_PREV then
             incMainMenu(-1)
-            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_ENTER then
             prevUiState = uiStatus.mainMenu
             uiState = uiStatus.pages
             pageState = pageStatus.display  -- added in case we reboot from popup over main menu
-            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_ENTER_LONG then
             rf2.print("Popup from main menu")
             createPopupMenu()
-            rf2.lcdNeedsInvalidate = true
         end
     elseif uiState == uiStatus.pages then
         if prevUiState ~= uiState then
-            rf2.lcdNeedsInvalidate = true
             prevUiState = uiState
         end
         if pageState == pageStatus.display then
             if lastEvent == EVT_VIRTUAL_PREV then
                 incField(-1)
-                rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_NEXT then
                 incField(1)
-                rf2.lcdNeedsInvalidate = true
             elseif Page and lastEvent == EVT_VIRTUAL_ENTER then
                 local f = Page.fields[currentField]
                 if (Page.isReady or (Page.values and f.vals and Page.values[f.vals[#f.vals]])) and not f.readOnly then
@@ -447,21 +439,15 @@ local function processEvent()
                     if Page.fields[currentField].preEdit then
                         Page.fields[currentField]:preEdit(Page)
                     end
-                    rf2.lcdNeedsInvalidate = true
                 end
             elseif lastEvent == EVT_VIRTUAL_ENTER_LONG then
                 rf2.print("Popup from page")
                 createPopupMenu()
-                rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_EXIT then
                 invalidatePages()
                 currentField = 1
                 uiState = uiStatus.mainMenu
-                if rf2.logfile then
-                    io.close(rf2.logfile)
-                    rf2.logfile = nil
-                end
-                lcd.invalidate()
+                screenTitle = "Rotorflight "..LUA_VERSION
 				lastEvent = nil
                 return 0
             end
@@ -471,13 +457,10 @@ local function processEvent()
                     Page.fields[currentField]:postEdit(Page)
                 end
                 pageState = pageStatus.display
-				rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_NEXT then
                 incValue(1 * scrollSpeedMultiplier)
-				rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_PREV then
                 incValue(-1 * scrollSpeedMultiplier)
-				rf2.lcdNeedsInvalidate = true
             end
         end
     elseif uiState == uiStatus.confirm then
@@ -529,10 +512,11 @@ local function wakeup(widget)
         end
         if Page and Page.timer and (not Page.lastTimeTimerFired or Page.lastTimeTimerFired + 0.5 < rf2.clock()) then
             Page.timer(Page)
-            Page.lastTimeTimerFired = rf2.clock()
+            if Page then Page.lastTimeTimerFired = rf2.clock() end
         end
         if not Page then
             Page = assert(rf2.loadScript("PAGES/"..PageFiles[currentPage].script))()
+            screenTitle = "Rotorflight / "..Page.title
             collectgarbage()
         end
         if not(Page.values or Page.isReady) and pageState == pageStatus.display then
@@ -557,7 +541,7 @@ end
 
 -- EVENT:  Called for button presses, scroll events, touch events, etc.
 local function event(widget, category, value, x, y)
-    rf2.print("Event received: "..category.."  "..value)
+    --rf2.print("Event received: "..category.."  "..value)
     if category == EVT_KEY then
         if value == 4099 or value == 4100 then
             local scrollSpeed = rf2.clock() - scrollSpeedTS
@@ -693,7 +677,6 @@ local function drawPage()
                 lcd.drawText(f.sp or f.x, y, strVal)
             end
         end
-        screenTitle = "Rotorflight / "..Page.title
     end
 end
 

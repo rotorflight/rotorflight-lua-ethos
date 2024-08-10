@@ -70,8 +70,8 @@ function MspQueueController:processQueue()
         err = nil
     end
 
-    if cmd then rf2.print("Received cmd: "..tostring(cmd)) end
-    if err then rf2.print("  err: "..tostring(err)) end
+    --if cmd then rf2.print("Received cmd: "..tostring(cmd)) end
+    --if err then rf2.print("  err: "..tostring(err)) end
 
     if (cmd == self.currentMessage.command and not err) or (self.currentMessage.command == 68 and self.retryCount == 2) then -- 68 = MSP_REBOOT
         --rf2.print("Received: {" .. joinTableItems(buf, ", ") .. "}")
@@ -105,7 +105,7 @@ end
 
 function MspQueueController:add(message)
     message = deepCopy(message)
-    rf2.print("Queueing command "..message.command.." at position "..#self.messageQueue + 1)
+    --rf2.print("Queueing command "..message.command.." at position "..#self.messageQueue + 1)
     self.messageQueue[#self.messageQueue + 1] =  message
     return self
 end
