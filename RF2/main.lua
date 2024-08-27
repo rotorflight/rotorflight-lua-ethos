@@ -1,5 +1,5 @@
 -- RotorFlight + ETHOS LUA configuration
-local LUA_VERSION = "2.1.0 - 240809"
+local LUA_VERSION = "2.1.0 - 240827"
 
 local uiStatus =
 {
@@ -140,7 +140,7 @@ local mspSaveSettings =
     end
 }
 
-local function saveSettings()
+rf2.saveSettings = function()
     if pageState ~= pageStatus.saving then
         pageState = pageStatus.saving
         saveTS = rf2.clock()
@@ -208,7 +208,9 @@ local function createPopupMenu()
     popupMenuActive = 1
     popupMenu = {}
     if uiState == uiStatus.pages then
-        popupMenu[#popupMenu + 1] = { t = "Save Page", f = saveSettings }
+        if not Page.readOnly then
+            popupMenu[#popupMenu + 1] = { t = "Save Page", f = rf2.saveSettings }
+        end
         popupMenu[#popupMenu + 1] = { t = "Reload", f = invalidatePages }
     end
     popupMenu[#popupMenu + 1] = { t = "Reboot", f = rebootFc }
