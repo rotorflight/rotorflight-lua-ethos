@@ -353,6 +353,18 @@ local function create()
     return {}
 end
 
+local function exit()
+    uiState = uiStatus.init
+    lastEvent = nil
+    callCreate = true
+    invalidatePages()
+    if rf2.logfile then
+        io.close(rf2.logfile)
+        rf2.logfile = nil
+    end
+    system.exit()
+end
+
 local function processEvent()
     rf2.lcdNeedsInvalidate = true
 
@@ -373,43 +385,13 @@ local function processEvent()
             popupMenu = nil
         end
     elseif uiState == uiStatus.init then
-        screenTitle = "Rotorflight "..LUA_VERSION
-        local prevInit
-        if init ~= nil then
-            prevInit = init.t
-        end
-        init = init or assert(rf2.loadScript("ui_init.lua"))()
         if lastEvent == EVT_VIRTUAL_EXIT then
-			lastEvent = nil
-            callCreate = true
-			invalidatePages()
-            system.exit()
+            exit()
             return 0
         end
-        local initSuccess = init.f()
-        if prevInit ~= init.t then
-            -- Update initialization message
-            lcd.invalidate()
-        end
-        if not initSuccess then
-            -- waiting on api version to finish successfully.
-            return 0
-        end
-        init = nil
-        PageFiles = assert(rf2.loadScript("pages.lua"))()
-        invalidatePages()
-        uiState = prevUiState or uiStatus.mainMenu
-        prevUiState = nil
     elseif uiState == uiStatus.mainMenu then
         if lastEvent == EVT_VIRTUAL_EXIT then
-			lastEvent = nil
-			lcd.invalidate()
-            callCreate = true
-            if rf2.logfile then
-                io.close(rf2.logfile)
-                rf2.logfile = nil
-            end
-            system.exit()
+            exit()
             return 0
         elseif lastEvent == EVT_VIRTUAL_NEXT then
             incMainMenu(1)
@@ -504,7 +486,22 @@ local function wakeup(widget)
     updateTelemetryState()
 
     -- run_ui(event)
-    if  uiState == uiStatus.pages then
+    if uiState == uiStatus.init then
+        screenTitle = "Rotorflight "..LUA_VERSION
+        local prevInitText = init and init.t or nil
+        init = init or assert(rf2.loadScript("ui_init.lua"))()
+        local initSuccess = init.f()
+        if prevInitText ~= init.t then lcd.invalidate() end
+        if not initSuccess then
+            -- waiting on api version to finish successfully.
+            return 0
+        end
+        init = nil
+        PageFiles = assert(rf2.loadScript("pages.lua"))()
+        invalidatePages()
+        uiState = prevUiState or uiStatus.mainMenu
+        prevUiState = nil
+    elseif uiState == uiStatus.pages then
         if pageState == pageStatus.saving then
             if saveTS + rf2.protocol.saveTimeout < rf2.clock() then
                 --rf2.print("Save timeout!")
@@ -557,10 +554,7 @@ local function event(widget, category, value, x, y)
         end
 
         if value == EVT_VIRTUAL_PREV_LONG then
-            rf2.print("Forcing exit")
-            invalidatePages()
-            uiState = uiStatus.mainMenu
-            system.exit()
+            exit()
             return 0
         elseif value ==  97 then
             -- Process enter later when it's clear it's not a long enter
