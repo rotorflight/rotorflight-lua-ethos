@@ -355,6 +355,7 @@ end
 
 local function exit()
     uiState = uiStatus.init
+    prevUiState = nil
     lastEvent = nil
     callCreate = true
     invalidatePages()
