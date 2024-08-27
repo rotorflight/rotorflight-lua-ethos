@@ -1,5 +1,5 @@
 -- RotorFlight + ETHOS LUA configuration
-local LUA_VERSION = "2.1.0 - 240721"
+local LUA_VERSION = "2.1.0 - 240827"
 
 local uiStatus =
 {
@@ -16,6 +16,7 @@ local pageStatus =
     saving  = 3,
     eepromWrite = 4,
     rebooting = 5,
+    waiting = 6
 }
 
 local telemetryStatus =
@@ -39,6 +40,7 @@ local PageFiles, Page, init, popupMenu
 local scrollSpeedTS = 0
 local scrollSpeedMultiplier = 1
 local displayMessage
+local waitMessage
 
 -- New variables for Ethos version
 local screenTitle = nil
@@ -68,6 +70,25 @@ local function invalidatePages()
     rf2.lcdNeedsInvalidate = true
 end
 
+rf2.reloadPage = invalidatePages
+
+rf2.setWaitMessage = function(message)
+    pageState = pageStatus.waiting
+    waitMessage = message
+    rf2.lcdNeedsInvalidate = true
+end
+
+rf2.clearWaitMessage = function()
+    pageState = pageStatus.display
+    waitMessage = nil
+    rf2.lcdNeedsInvalidate = true
+end
+
+rf2.displayMessage = function(title, text)
+    displayMessage = { title = title, text = text }
+    rf2.lcdNeedsInvalidate = true
+end
+
 local function rebootFc()
     --rf2.print("Attempting to reboot the FC...")
     pageState = pageStatus.rebooting
@@ -90,6 +111,9 @@ local mspEepromWrite =
         else
             invalidatePages()
         end
+    end,
+    errorHandler = function(self)
+        rf2.displayMessage("Save error", "Make sure your heli is disarmed.")
     end,
     simulatorResponse = {}
 }
@@ -116,7 +140,7 @@ local mspSaveSettings =
     end
 }
 
-local function saveSettings()
+rf2.saveSettings = function()
     if pageState ~= pageStatus.saving then
         pageState = pageStatus.saving
         saveTS = rf2.clock()
@@ -127,13 +151,6 @@ local function saveSettings()
             mspSaveSettings.payload = payload
             mspSaveSettings.simulatorResponse = {}
             rf2.mspQueue:add(mspSaveSettings)
-            rf2.mspQueue.errorHandler = function()
-                displayMessage = {
-                    title = "Save error",
-                    text = "Make sure your heli is disarmed."
-                }
-                rf2.lcdNeedsInvalidate = true
-            end
         elseif type(Page.write) == "function" then
             Page.write(Page)
         end
@@ -191,7 +208,9 @@ local function createPopupMenu()
     popupMenuActive = 1
     popupMenu = {}
     if uiState == uiStatus.pages then
-        popupMenu[#popupMenu + 1] = { t = "Save Page", f = saveSettings }
+        if not Page.readOnly then
+            popupMenu[#popupMenu + 1] = { t = "Save Page", f = rf2.saveSettings }
+        end
         popupMenu[#popupMenu + 1] = { t = "Reload", f = invalidatePages }
     end
     popupMenu[#popupMenu + 1] = { t = "Reboot", f = rebootFc }
@@ -285,6 +304,10 @@ local function updateTelemetryState()
     end
 end
 
+local function fieldIsButton(f)
+    return f.t and string.sub(f.t, 1, 1) == "[" and not (f.data or f.value)
+end
+
 ---
 --- ETHOS system tool functions
 ---
@@ -330,31 +353,22 @@ local function create()
     return {}
 end
 
-
--- WAKEUP:  Called every ~30-50ms by the main Ethos software loop
-local function wakeup(widget)
-    if callCreate then
-        -- HACK for enabling the rotary wheel, see https://github.com/FrSkyRC/ETHOS-Feedback-Community/issues/2292
-        -- TLDR: don't specify create in system.registerSystemTool but call it here.
-        create()
+local function exit()
+    uiState = uiStatus.init
+    prevUiState = nil
+    lastEvent = nil
+    callCreate = true
+    invalidatePages()
+    if rf2.logfile then
+        io.close(rf2.logfile)
+        rf2.logfile = nil
     end
+    system.exit()
+end
 
-	-- HACK for processing long enter events without processing normal enter events as well.
-    -- A long enter event might follow some time (max 0.6s) after a normal enter event.
-    -- Only process normal enter events after that time if no long enter event has been received.
-	if enterEvent ~= nil and (rf2.clock() - enterEventTime > 0.6) then
-        lastEvent = enterEvent
-		enterEvent = nil
-	end
+local function processEvent()
+    rf2.lcdNeedsInvalidate = true
 
-    if (rf2.radio == nil or rf2.protocol == nil) then
-        rf2.print("Error:  wakeup() called but create must have failed!")
-        return 0
-    end
-
-    updateTelemetryState()
-
-    -- run_ui(event)
     if displayMessage then
         if lastEvent == EVT_VIRTUAL_EXIT or lastEvent == EVT_VIRTUAL_ENTER then
             displayMessage = nil
@@ -363,106 +377,62 @@ local function wakeup(widget)
     elseif popupMenu then
         if lastEvent == EVT_VIRTUAL_EXIT then
             popupMenu = nil
-            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_PREV then
             incPopupMenu(-1)
-            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_NEXT then
             incPopupMenu(1)
-            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_ENTER then
             popupMenu[popupMenuActive].f()
             popupMenu = nil
-            rf2.lcdNeedsInvalidate = true
         end
     elseif uiState == uiStatus.init then
-        screenTitle = "Rotorflight "..LUA_VERSION
-        local prevInit
-        if init ~= nil then
-            prevInit = init.t
-        end
-        init = init or assert(rf2.loadScript("ui_init.lua"))()
         if lastEvent == EVT_VIRTUAL_EXIT then
-			lastEvent = nil
-            callCreate = true
-			invalidatePages()
-            system.exit()
+            exit()
             return 0
         end
-        local initSuccess = init.f()
-        if prevInit ~= init.t then
-            -- Update initialization message
-            lcd.invalidate()
-        end
-        if not initSuccess then
-            -- waiting on api version to finish successfully.
-            return 0
-        end
-        init = nil
-        PageFiles = assert(rf2.loadScript("pages.lua"))()
-        invalidatePages()
-        uiState = prevUiState or uiStatus.mainMenu
-        prevUiState = nil
     elseif uiState == uiStatus.mainMenu then
-        screenTitle = "Rotorflight "..LUA_VERSION
         if lastEvent == EVT_VIRTUAL_EXIT then
-			lastEvent = nil
-			lcd.invalidate()
-            callCreate = true
-            system.exit()
+            exit()
             return 0
         elseif lastEvent == EVT_VIRTUAL_NEXT then
             incMainMenu(1)
-            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_PREV then
             incMainMenu(-1)
-            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_ENTER then
             prevUiState = uiStatus.mainMenu
             uiState = uiStatus.pages
             pageState = pageStatus.display  -- added in case we reboot from popup over main menu
-            rf2.lcdNeedsInvalidate = true
         elseif lastEvent == EVT_VIRTUAL_ENTER_LONG then
             rf2.print("Popup from main menu")
             createPopupMenu()
-            rf2.lcdNeedsInvalidate = true
         end
     elseif uiState == uiStatus.pages then
         if prevUiState ~= uiState then
-            rf2.lcdNeedsInvalidate = true
             prevUiState = uiState
         end
-        if pageState == pageStatus.saving then
-            if saveTS + rf2.protocol.saveTimeout < rf2.clock() then
-                --rf2.print("Save timeout!")
-                pageState = pageStatus.display
-                invalidatePages()
-            end
-        elseif pageState == pageStatus.display then
+        if pageState == pageStatus.display then
             if lastEvent == EVT_VIRTUAL_PREV then
                 incField(-1)
-                rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_NEXT then
                 incField(1)
-                rf2.lcdNeedsInvalidate = true
             elseif Page and lastEvent == EVT_VIRTUAL_ENTER then
                 local f = Page.fields[currentField]
-                if (Page.isReady or (Page.values and f.vals and Page.values[f.vals[#f.vals]])) and not f.ro then
-                    pageState = pageStatus.editing
+                if (Page.isReady or (Page.values and f.vals and Page.values[f.vals[#f.vals]])) and not f.readOnly then
+                    if not fieldIsButton(Page.fields[currentField]) then
+                        pageState = pageStatus.editing
+                    end
                     if Page.fields[currentField].preEdit then
                         Page.fields[currentField]:preEdit(Page)
                     end
-                    rf2.lcdNeedsInvalidate = true
                 end
             elseif lastEvent == EVT_VIRTUAL_ENTER_LONG then
                 rf2.print("Popup from page")
                 createPopupMenu()
-                rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_EXIT then
                 invalidatePages()
                 currentField = 1
                 uiState = uiStatus.mainMenu
-                lcd.invalidate()
+                screenTitle = "Rotorflight "..LUA_VERSION
 				lastEvent = nil
                 return 0
             end
@@ -472,25 +442,11 @@ local function wakeup(widget)
                     Page.fields[currentField]:postEdit(Page)
                 end
                 pageState = pageStatus.display
-				rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_NEXT then
                 incValue(1 * scrollSpeedMultiplier)
-				rf2.lcdNeedsInvalidate = true
             elseif lastEvent == EVT_VIRTUAL_PREV then
                 incValue(-1 * scrollSpeedMultiplier)
-				rf2.lcdNeedsInvalidate = true
             end
-        end
-        if not Page then
-            Page = assert(rf2.loadScript("PAGES/"..PageFiles[currentPage].script))()
-            collectgarbage()
-        end
-        if not(Page.values or Page.isReady) and pageState == pageStatus.display then
-            requestPage()
-        end
-        if Page and Page.timer and (not Page.lastTimeTimerFired or Page.lastTimeTimerFired + 0.5 < rf2.clock()) then
-            Page.timer(Page)
-            Page.lastTimeTimerFired = rf2.clock()
         end
     elseif uiState == uiStatus.confirm then
         if lastEvent == EVT_VIRTUAL_ENTER then
@@ -501,6 +457,70 @@ local function wakeup(widget)
             invalidatePages()
             uiState = prevUiState
             prevUiState = nil
+        end
+    end
+end
+
+-- WAKEUP:  Called every ~30-50ms by the main Ethos software loop
+local function wakeup(widget)
+    if callCreate then
+        -- HACK for enabling the rotary wheel, see https://github.com/FrSkyRC/ETHOS-Feedback-Community/issues/2292
+        -- TLDR: don't specify create in system.registerSystemTool but call it here.
+        create()
+        processEvent()
+    end
+
+	-- HACK for processing long enter events without processing normal enter events as well.
+    -- A long enter event might follow some time (max 0.6s) after a normal enter event.
+    -- Only process normal enter events after that time if no long enter event has been received.
+	if enterEvent ~= nil and (rf2.clock() - enterEventTime > 0.6) then
+        lastEvent = enterEvent
+		enterEvent = nil
+        processEvent()
+	end
+
+    if (rf2.radio == nil or rf2.protocol == nil) then
+        rf2.print("Error:  wakeup() called but create must have failed!")
+        return 0
+    end
+
+    updateTelemetryState()
+
+    -- run_ui(event)
+    if uiState == uiStatus.init then
+        screenTitle = "Rotorflight "..LUA_VERSION
+        local prevInitText = init and init.t or nil
+        init = init or assert(rf2.loadScript("ui_init.lua"))()
+        local initSuccess = init.f()
+        if prevInitText ~= init.t then lcd.invalidate() end
+        if not initSuccess then
+            -- waiting on api version to finish successfully.
+            return 0
+        end
+        init = nil
+        PageFiles = assert(rf2.loadScript("pages.lua"))()
+        invalidatePages()
+        uiState = prevUiState or uiStatus.mainMenu
+        prevUiState = nil
+    elseif uiState == uiStatus.pages then
+        if pageState == pageStatus.saving then
+            if saveTS + rf2.protocol.saveTimeout < rf2.clock() then
+                --rf2.print("Save timeout!")
+                pageState = pageStatus.display
+                invalidatePages()
+            end
+        end
+        if Page and Page.timer and (not Page.lastTimeTimerFired or Page.lastTimeTimerFired + 0.5 < rf2.clock()) then
+            Page.timer(Page)
+            if Page then Page.lastTimeTimerFired = rf2.clock() end
+        end
+        if not Page then
+            Page = assert(rf2.loadScript("PAGES/"..PageFiles[currentPage].script))()
+            screenTitle = "Rotorflight / "..Page.title
+            collectgarbage()
+        end
+        if not(Page.values or Page.isReady) and pageState == pageStatus.display then
+            requestPage()
         end
     end
 
@@ -526,7 +546,7 @@ local function event(widget, category, value, x, y)
         if value == 4099 or value == 4100 then
             local scrollSpeed = rf2.clock() - scrollSpeedTS
             --rf2.print(scrollSpeed)
-            if scrollSpeed < 0.075 then
+            if scrollSpeed < 0.1 then
                 scrollSpeedMultiplier = 5
             else
                 scrollSpeedMultiplier = 1
@@ -535,14 +555,13 @@ local function event(widget, category, value, x, y)
         end
 
         if value == EVT_VIRTUAL_PREV_LONG then
-            rf2.print("Forcing exit")
-            invalidatePages()
-            system.exit()
+            exit()
             return 0
         elseif value ==  97 then
             -- Process enter later when it's clear it's not a long enter
             enterEvent = EVT_VIRTUAL_ENTER
             enterEventTime = rf2.clock()
+            processEvent()
             return true
         elseif value == 129 then
             -- Long enter
@@ -550,24 +569,28 @@ local function event(widget, category, value, x, y)
             rf2.print("Time elapsed since last enter: "..(rf2.clock() - enterEventTime))
             enterEvent = nil
             lastEvent = EVT_VIRTUAL_ENTER_LONG
+            processEvent()
             return true
         elseif value == 35 then
             -- Rtn released.
             if not enterEvent then
                 lastEvent = EVT_VIRTUAL_EXIT
             end
+            processEvent()
             return true
         elseif value ==  4099 then
             -- rotary left
             if not enterEvent then
                 lastEvent = EVT_VIRTUAL_PREV
             end
+            processEvent()
             return true
         elseif value ==  4100 then
             -- rotary right
             if not enterEvent then
                 lastEvent = EVT_VIRTUAL_NEXT
             end
+            processEvent()
             return true
         end
     end
@@ -575,7 +598,7 @@ local function event(widget, category, value, x, y)
     return false
 end
 
-local function drawScreen()
+local function drawPage()
     local LCD_W, LCD_H = rf2.getWindowSize()
     if Page then
         local yMinLim = rf2.radio.yMinLimit
@@ -592,13 +615,13 @@ local function drawScreen()
             local f = Page.labels[i]
             local y = f.y - pageScrollY
             if y >= 0 and y <= LCD_H then
-                lcd.font(FONT_BOLD)
+                lcd.font((f.bold == false and FONT_STD) or FONT_BOLD)
                 lcd.color(ITEM_TEXT_NORMAL)
                 lcd.drawText(f.x, y, f.t)
             end
         end
-        local val = "---"
         for i=1,#Page.fields do
+            local val = "---"
             local f = Page.fields[i]
             if f.data and f.data.value then
                 val = f.data.value
@@ -616,7 +639,9 @@ local function drawScreen()
             end
             local y = f.y - pageScrollY
             if y >= 0 and y <= LCD_H then
-                if f.t then
+                if fieldIsButton(f) then
+                    val = f.t
+                elseif f.t then
                     lcd.font(FONT_STD)
                     lcd.color(ITEM_TEXT_NORMAL)
                     lcd.drawText(f.x, y, f.t)
@@ -649,7 +674,6 @@ local function drawScreen()
                 lcd.drawText(f.sp or f.x, y, strVal)
             end
         end
-        screenTitle = "Rotorflight / "..Page.title
     end
 end
 
@@ -720,7 +744,7 @@ local function paint(widget)
             end
         end
     elseif uiState == uiStatus.pages then
-        drawScreen()
+        drawPage()
         if pageState >= pageStatus.saving then
             local saveMsg = ""
             if pageState == pageStatus.saving then
@@ -729,6 +753,8 @@ local function paint(widget)
                 saveMsg = "Updating..."
             elseif pageState == pageStatus.rebooting then
                 saveMsg = "Rebooting..."
+            elseif pageState == pageStatus.waiting then
+                saveMsg = waitMessage
             end
             lcd.color(MENU_TITLE_BGCOLOR)
             lcd.drawFilledRectangle(rf2.radio.SaveBox.x,rf2.radio.SaveBox.y,rf2.radio.SaveBox.w,rf2.radio.SaveBox.h)
@@ -737,7 +763,7 @@ local function paint(widget)
             lcd.drawText(rf2.radio.SaveBox.x+rf2.radio.SaveBox.x_offset,rf2.radio.SaveBox.y+rf2.radio.SaveBox.h_offset,saveMsg)
         end
     elseif uiState == uiStatus.confirm then
-        drawScreen()
+        drawPage()
     end
 
     if screenTitle then

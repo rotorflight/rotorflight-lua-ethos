@@ -64,13 +64,14 @@ rf2 = {
     end,
 
     log = function(str)
-        local f = io.open("/rf2.log", 'a')
-        io.write(f, tostring(str) .. "\n")
-        io.close(f)
+        if not rf2.logfile then
+            rf2.logfile = io.open("/rf2.log", "a")
+        end
+        io.write(rf2.logfile, string.format("%.2f ", rf2.clock()) .. tostring(str) .. "\n")
     end,
 
     print = function(str)
-        print(tostring(str))
+        --print(tostring(str))
         --rf2.log(str)
     end,
 

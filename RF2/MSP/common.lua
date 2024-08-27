@@ -70,6 +70,7 @@ function mspSendRequest(cmd, payload)
         mspTxBuf[i+2] = bit32.band(payload[i],0xFF)
     end
     mspLastReq = cmd
+    return mspProcessTxQ()
 end
 
 local function mspReceivedReply(payload)
