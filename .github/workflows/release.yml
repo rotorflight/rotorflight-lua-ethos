@@ -31,7 +31,7 @@ jobs:
         cat ${GITHUB_ENV}
 
     - name: Make release package
-      run: zip -q -r "rotorflight-lua-ethos-${{ env.GIT_VER }}.zip" RF*
+      run: zip -q -r "rotorflight-lua-ethos-${{ env.GIT_VER }}.zip" RF2* rf2*
 
     - name: Create Release
       run: |
