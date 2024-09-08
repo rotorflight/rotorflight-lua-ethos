@@ -291,7 +291,7 @@ end
 local function updateTelemetryState()
     local oldTelemetryState = telemetryState
 
-    if not rf2.rssiSensor then
+    if not rf2.rssiSensor and not rf2.runningInSimulator then
         telemetryState = telemetryStatus.noSensor
     elseif rf2.getRSSI() == 0 then
         telemetryState = telemetryStatus.noTelemetry

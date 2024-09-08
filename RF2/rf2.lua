@@ -30,11 +30,8 @@ rf2 = {
     end,
 
     getRSSI = function()
-        if rf2.rssiSensor ~= nil and rf2.rssiSensor:state() then
-            -- this will return the last known value if nothing is received
-            return rf2.rssiSensor:value()
-        end
-        -- return 0 if no telemetry signal to match OpenTX
+        if rf2.runningInSimulator then return 100 end
+        if rf2.rssiSensor ~= nil then return rf2.rssiSensor:value() end
         return 0
     end,
 
