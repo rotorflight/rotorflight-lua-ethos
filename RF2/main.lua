@@ -322,7 +322,8 @@ end
 -- CREATE:  Called once each time the system widget is opened by the user.
 local function create()
     --rf2.print("create called")
-    rf2.sensor = sport.getSensor({primId=0x32})
+
+    -- get sensor we call for checking link up
     rf2.rssiSensor =
         system.getSource("RSSI") or
         system.getSource("RSSI 2.4G") or
@@ -331,7 +332,9 @@ local function create()
         system.getSource("Rx RSSI1") or
         system.getSource("Rx RSSI2")
 
-    --rf2.sensor:idle(false)
+    -- get sensor for msp comms
+    rf2.sensor = sport.getSensor({primId=0x32})
+    rf2.sensor:module(rf2.rssiSensor:module())
 
     rf2.protocol = assert(rf2.loadScript("protocols.lua"))()
     rf2.radio = assert(rf2.loadScript("radios.lua"))().msp
