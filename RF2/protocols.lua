@@ -8,7 +8,7 @@ local supportedProtocols =
         maxRxBufferSize = 6,
         maxRetries      = 3,
         saveTimeout     = 5.0,
-        pageReqTimeout  = 2,
+        pageReqTimeout  = 3,
     },
     crsf =
     {
@@ -17,7 +17,7 @@ local supportedProtocols =
         maxRxBufferSize = 58,
         maxRetries      = 3,
         saveTimeout     = 3.0,
-        pageReqTimeout  = 2,
+        pageReqTimeout  = 3,
     }
 }
 

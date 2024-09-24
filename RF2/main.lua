@@ -334,7 +334,7 @@ local function create()
 
     -- get sensor for msp comms
     rf2.sensor = sport.getSensor({primId=0x32})
-    rf2.sensor:module(rf2.rssiSensor:module())
+    if rf2.rssiSensor then rf2.sensor:module(rf2.rssiSensor:module()) end
 
     rf2.protocol = assert(rf2.loadScript("protocols.lua"))()
     rf2.radio = assert(rf2.loadScript("radios.lua"))().msp

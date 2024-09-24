@@ -140,3 +140,7 @@ function mspPollReply()
         end
     end
 end
+
+function mspClearTxBuf()
+    mspTxBuf = {}
+end
