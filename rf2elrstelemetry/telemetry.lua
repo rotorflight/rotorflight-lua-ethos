@@ -413,4 +413,9 @@ local function background()
     end
 end
 
-return { run = background }
+local function runProtected()
+    local status, err = pcall(background)
+    if not status then rf2.print(err) end
+end
+
+return { run = runProtected }
