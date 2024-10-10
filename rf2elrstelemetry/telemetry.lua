@@ -127,7 +127,7 @@ local function decControl(data, pos)
     y, c, pos = decS12S12(data, pos)
     setTelemetryValue(0x1031, 0, 0, p, UNIT_DEGREE, 2, "CPtc", -4500, 4500)
     setTelemetryValue(0x1032, 0, 0, r, UNIT_DEGREE, 2, "CRol", -4500, 4500)
-    setTelemetryValue(0x1033, 0, 0, y, UNIT_DEGREE, 2, "CYaw", -9000, 9000)
+    setTelemetryValue(0x1033, 0, 0, 3*y, UNIT_DEGREE, 2, "CYaw", -9000, 9000)
     setTelemetryValue(0x1034, 0, 0, c, UNIT_DEGREE, 2, "CCol", -4500, 4500)
     return nil, pos
 end
