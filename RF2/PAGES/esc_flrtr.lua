@@ -65,7 +65,7 @@ fields[7] = {t = "Temperature",            x = x + indent, y = inc.y(lineSpacing
 fields[8] = {t = "Timing angle",           x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 1, max = 20, default = 10, vals = {2 + 28}}
 fields[9] = {t = "Starting torque",        x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 1, max = 15, default = 3, vals = {2 + 30}}
 fields[10] = {t = "Response speed",        x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 1, max = 15, default = 5, vals = {2 + 31}}
-fields[11] = {t = "Buzzer volume",         x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 0, max = 5, default = 2, vals = {2 + 32}}
+fields[11] = {t = "Buzzer volume",         x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 1, max = 5, default = 2, vals = {2 + 32}}
 fields[12] = {t = "Current gain",          x = x + indent, y = inc.y(lineSpacing), sp = x + sp, min = 0, max = 40, default = 20, offset = -20, vals = {2 + 33}}
 
 
