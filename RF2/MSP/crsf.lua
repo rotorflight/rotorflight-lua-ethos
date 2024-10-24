@@ -13,8 +13,7 @@ local crsfMspCmd = 0
 local crsfPopFrame
 local crsfPushFrame
 
-local version = system.getVersion()
-if version.minor > 5 then
+if crsf.getSensor ~= nil then
     local sensor = crsf.getSensor()
     crsfPopFrame = function() return sensor:popFrame() end
     crsfPushFrame = function(x,y) return sensor:pushFrame(x,y) end

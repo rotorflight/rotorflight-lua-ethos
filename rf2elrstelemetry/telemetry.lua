@@ -12,8 +12,7 @@ local rssiSensor = nil
 
 local elrsPopFrame
 local elrsPushFrame
-local version = system.getVersion()
-if version.minor > 5 then
+if crsf.getSensor ~= nil then
     local sensor = crsf.getSensor()
     elrsPopFrame = function() return sensor:popFrame() end
     elrsPushFrame = function(x,y) return sensor:pushFrame(x,y) end
