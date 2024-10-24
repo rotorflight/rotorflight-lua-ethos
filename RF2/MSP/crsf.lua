@@ -9,12 +9,26 @@ local CRSF_FRAMETYPE_MSP_WRITE         = 0x7C      -- write with 60 byte chunked
 
 local crsfMspCmd = 0
 
+
+local crsfPopFrame
+local crsfPushFrame
+
+local version = system.getVersion()
+if version.minor > 5 then
+    local sensor = crsf.getSensor()
+    crsfPopFrame = function() return sensor:popFrame() end
+    crsfPushFrame = function(x,y) return sensor:pushFrame(x,y) end
+else
+    crsfPopFrame = function() return crsf.popFrame() end
+    crsfPushFrame = function(x,y) return crsf.pushFrame(x,y) end
+end
+
 rf2.protocol.mspSend = function(payload)
     local payloadOut = { CRSF_ADDRESS_BETAFLIGHT, CRSF_ADDRESS_RADIO_TRANSMITTER }
     for i=1, #(payload) do
         payloadOut[i+2] = payload[i]
     end
-    return crsf.pushFrame(crsfMspCmd, payloadOut)
+    return crsfPushFrame(crsfMspCmd, payloadOut)
 end
 
 rf2.protocol.mspRead = function(cmd)
@@ -29,7 +43,7 @@ end
 
 rf2.protocol.mspPoll = function()
     while true do
-        local cmd, data = crsf.popFrame()
+        local cmd, data = crsfPopFrame()
         if cmd == CRSF_FRAMETYPE_MSP_RESP and data[1] == CRSF_ADDRESS_RADIO_TRANSMITTER and data[2] == CRSF_ADDRESS_BETAFLIGHT then
 --[[
             rf2.print("cmd:0x"..string.format("%X", cmd))
