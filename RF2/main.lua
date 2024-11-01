@@ -1,5 +1,5 @@
 -- RotorFlight + ETHOS Lua configuration
-local LUA_VERSION = "2.1.0 - 240929"
+local LUA_VERSION = "2.1.0-RC1"
 
 local uiStatus =
 {
