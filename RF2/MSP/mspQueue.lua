@@ -41,7 +41,7 @@ function MspQueueController:processQueue()
 
     if rf2.rssiSensor then  
         local module = model.getModule(rf2.rssiSensor:module())    
-        if module.muteSensorLost ~= nil then
+        if module ~= nil and module.muteSensorLost ~= nil then
             module:muteSensorLost(2.0) -- mute for 2s      
         end
     end  
