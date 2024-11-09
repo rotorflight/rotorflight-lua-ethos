@@ -39,6 +39,14 @@ function MspQueueController:processQueue()
     end
     ELRS_PAUSE_TELEMETRY = true
 
+    if rf2.rssiSensor then  
+        local module = model.getModule(rf2.rssiSensor:module())    
+        if module ~= nil and module.muteSensorLost ~= nil then
+            module:muteSensorLost(2.0) -- mute for 2s      
+        end
+    end  
+
+
     if not self.currentMessage then
         self.currentMessage = popFirstElement(self.messageQueue)
         self.retryCount = 0
