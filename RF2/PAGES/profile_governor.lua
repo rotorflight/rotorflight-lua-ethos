@@ -18,7 +18,7 @@ inc.y(lineSpacing * 0.25)
 fields[#fields + 1] = { t = "Full headspeed",          x = x, y = inc.y(lineSpacing), sp = x + sp, min = 0, max = 50000, vals = { 1, 2 }, mult = 10, id = "govHeadspeed"}
 fields[#fields + 1] = { t = "Max throttle",            x = x, y = inc.y(lineSpacing), sp = x + sp, min = 0, max = 100, vals = { 13 }, id = "govMaxThrottle" }
 if rf2.apiVersion >= 12.07 then
-    fields[#fields + 1] = { t = "Min throttle",            x = x, y = inc.y(lineSpacing), sp = x + sp, min = 0, max = 100, vals = { 14 }, id = "govMinThrottle" }
+    fields[#fields + 1] = { t = "Min throttle",        x = x, y = inc.y(lineSpacing), sp = x + sp, min = 0, max = 100, vals = { 14 }, id = "govMinThrottle" }
 end
 fields[#fields + 1] = { t = "PID master gain",         x = x, y = inc.y(lineSpacing), sp = x + sp, min = 0, max = 250, vals = { 3 },  id = "govMasterGain" }
 fields[#fields + 1] = { t = "P-gain",                  x = x, y = inc.y(lineSpacing), sp = x + sp, min = 0, max = 250, vals = { 4 },  id = "govPGain" }
