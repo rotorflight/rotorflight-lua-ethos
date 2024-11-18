@@ -379,7 +379,7 @@ local telemetryFrameSkip = 0
 local telemetryFrameCount = 0
 
 local function crossfirePop()
-    local command, data = crsf.popFrame()
+    local command, data = elrs.popFrame()
     if command and data then
         if command == CRSF_FRAME_CUSTOM_TELEM then
             local fid, sid, val
