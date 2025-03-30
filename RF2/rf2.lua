@@ -61,18 +61,40 @@ rf2 = {
     end,
 
     log = function(str)
-        if not rf2.logfile then
-            rf2.logfile = io.open("/rf2.log", "a")
+        if rf2.runningInSimulator then
+            print(tostring(str))
+        else
+            if not rf2.logfile then
+                rf2.logfile = io.open("/rf2.log", "a")
+            end
+            io.write(rf2.logfile, string.format("%.2f ", rf2.clock()) .. tostring(str) .. "\n")
         end
-        io.write(rf2.logfile, string.format("%.2f ", rf2.clock()) .. tostring(str) .. "\n")
     end,
 
     print = function(str)
-        --print(tostring(str))
-        --rf2.log(str)
+        if rf2.runningInSimulator then
+            print("RF2: " .. tostring(str))
+        else
+            --serialWrite(tostring(str).."\r\n") -- 115200 bps
+            --rf2.log(str)
+        end
+    end,
+
+    useApi = function(apiName)
+        return assert(rf2.loadScript(rf2.baseDir.."MSP/" .. apiName .. ".lua"))()
     end,
 
     clock = os.clock,
 
-    apiVersion = nil
+    apiVersion = nil,
+
+    units = {
+        percentage = "%",
+        degrees = "°",
+        herz = " Hz",
+        seconds = " s",
+        volt = "V",
+        celsius = " C"
+    },
+
 }

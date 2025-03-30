@@ -1,16 +1,16 @@
-local profileSwitcher = {
+local rateSwitcher = {
     mspStatus = assert(rf2.loadScript("MSP/mspStatus.lua"))(),
     editing = false,
-    profileAdjustmentTS = nil,
+    rateAdjustmentTS = nil,
 
     getStatus = function(page)
-        local self = page.profileSwitcher
+        local self = page.rateSwitcher
         self.mspStatus.getStatus(self.onProcessedMspStatus, page)
     end,
 
     checkStatus = function(page)
-        local self = page.profileSwitcher
-        if self.profileAdjustmentTS and rf2.clock() - self.profileAdjustmentTS > 0.5 then
+        local self = page.rateSwitcher
+        if self.rateAdjustmentTS and rf2.clock() - self.rateAdjustmentTS > 0.5 then
             rf2.reloadPage()
         elseif rf2.mspQueue:isProcessed() and not self.editing then
             self.mspStatus.getStatus(self.onProcessedMspStatus, page)
@@ -18,13 +18,13 @@ local profileSwitcher = {
     end,
 
     onProcessedMspStatus = function(page, status)
-        local self = page.profileSwitcher
+        local self = page.rateSwitcher
         local currentField = page.fields[1]
-        if currentField.data.value ~= status.profile and not self.editing then
+        if currentField.data.value ~= status.rateProfile and not page.rateSwitcher.editing then
             if currentField.data.value then
-                self.profileAdjustmentTS = rf2.clock()
+                page.rateSwitcher.rateAdjustmentTS = rf2.clock()
             end
-            currentField.data.value = status.profile
+            currentField.data.value = status.rateProfile
             rf2.lcdNeedsInvalidate = true
         end
 
@@ -32,12 +32,12 @@ local profileSwitcher = {
     end,
 
     startPidEditing = function(field, page)
-        page.profileSwitcher.editing = true
+        page.rateSwitcher.editing = true
     end,
 
     endPidEditing = function(field, page)
-        rf2.useApi("mspSetProfile").setPidProfile(field.data.value, function() rf2.reloadPage() end, nil)
+        rf2.useApi("mspSetProfile").setRateProfile(field.data.value, function() rf2.reloadPage() end, nil)
     end
 }
 
-return profileSwitcher
+return rateSwitcher

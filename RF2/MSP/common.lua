@@ -61,7 +61,7 @@ function mspSendRequest(cmd, payload)
     --rf2.print("Sending cmd "..cmd)
     -- busy
     if #(mspTxBuf) ~= 0 or not cmd then
-        rf2.print("Existing mspTxBuf is still being sent, failed send of cmd: "..tostring(cmd))
+        --rf2.print("Existing mspTxBuf is still being sent, failed send of cmd: "..tostring(cmd))
         return nil
     end
     mspTxBuf[1] = #(payload)
@@ -101,7 +101,7 @@ local function mspReceivedReply(payload)
             --rf2.print("Started cmd "..mspLastReq)
         end
     elseif not mspStarted then
-		rf2.print("  mspReceivedReply: missing Start flag")
+		--rf2.print("  mspReceivedReply: missing Start flag")
         return nil
     elseif bit32.band(mspRemoteSeq + 1, 0x0F) ~= seq then
         mspStarted = false
@@ -121,7 +121,7 @@ local function mspReceivedReply(payload)
     mspStarted = false
     -- check CRC
     if mspRxCRC ~= payload[idx] and version == 0 then
-		rf2.print("  mspReceivedReply:  payload checksum incorrect, message failed!")
+		--rf2.print("  mspReceivedReply:  payload checksum incorrect, message failed!")
         --rf2.print("    Calculated mspRxCRC:  0x"..string.format("%X", mspRxCRC))
         --rf2.print("    CRC from payload:     0x"..string.format("%X", payload[idx]))
         return nil
