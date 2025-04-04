@@ -1,6 +1,6 @@
 # 2.2.0-RC1
 
-This is the 2.2.0 release of the *Rotorflight Lua Scripts for Ethos*.
+This is the 2.2.0-RC1 pre-release of the *Rotorflight Lua Scripts for Ethos*.
 
 ## Downloads
 
