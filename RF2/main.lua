@@ -765,10 +765,15 @@ local function paint(widget)
     end
 end
 
+local function close()
+	rf2.sensor = nil    -- release sensor or other lua's cant use it
+	system.exit()
+end
+
 local icon = lcd.loadMask("/scripts/RF2/RF.png")
 
 local function init()
-    system.registerSystemTool({name=name, icon=icon, wakeup=wakeup, paint=paint, event=event})
+    system.registerSystemTool({name=name, icon=icon, wakeup=wakeup, paint=paint, event=event, close=close})
 end
 
 return { init = init }
