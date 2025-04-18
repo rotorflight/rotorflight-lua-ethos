@@ -1,5 +1,5 @@
 -- RotorFlight + ETHOS Lua configuration
-local LUA_VERSION = "2.2.0-RC1"
+local LUA_VERSION = "2.2.0-RC3"
 
 local uiStatus =
 {
@@ -474,6 +474,8 @@ local function wakeup(widget)
             if Page then Page.lastTimeTimerFired = rf2.clock() end
         end
         if not Page then
+            rf2.mspQueue:clear()
+            collectgarbage()
             Page = assert(rf2.loadScript("PAGES/"..PageFiles[currentPage].script))()
             screenTitle = Page.title
             collectgarbage()
@@ -765,10 +767,15 @@ local function paint(widget)
     end
 end
 
+local function close()
+	rf2.sensor = nil    -- release sensor or other lua's cant use it
+	system.exit()
+end
+
 local icon = lcd.loadMask("/scripts/RF2/RF.png")
 
 local function init()
-    system.registerSystemTool({name=name, icon=icon, wakeup=wakeup, paint=paint, event=event})
+    system.registerSystemTool({name=name, icon=icon, wakeup=wakeup, paint=paint, event=event, close=close})
 end
 
 return { init = init }

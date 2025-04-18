@@ -91,10 +91,13 @@ rf2 = {
     units = {
         percentage = "%",
         degrees = "°",
+        degreesPerSecond = "°/s",
         herz = " Hz",
         seconds = " s",
+        milliseconds = " ms",
         volt = "V",
-        celsius = " C"
+        celsius = " C",
+        rpm = " RPM"
     },
 
 }
