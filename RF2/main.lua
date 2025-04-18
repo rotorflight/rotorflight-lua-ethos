@@ -474,7 +474,6 @@ local function wakeup(widget)
             if Page then Page.lastTimeTimerFired = rf2.clock() end
         end
         if not Page then
-            rf2.mspQueue:clear()
             collectgarbage()
             Page = assert(rf2.loadScript("PAGES/"..PageFiles[currentPage].script))()
             screenTitle = Page.title
