@@ -121,6 +121,47 @@ Rotorflight is an open-source community project. Anybody can join in and help to
 * [Contributing](https://www.rotorflight.org/docs/Contributing/intro) to the software development - fixing bugs, implementing new features and improvements
 * [Translating](https://www.rotorflight.org/docs/Contributing/intro#translations) Rotorflight Configurator into a new language, or helping to maintain an existing translation
 
+## Development Guide
+
+To build and deploy RFSuite locally:
+
+### Requirements
+
+-   FrSky Simulator (Ethos)
+    
+-   Visual Studio Code (VS Code)
+    
+-   Python 3
+    
+-   Install tqdm and serial:
+    
+    ```bash
+    pip install tqdm
+    pip install serial
+    ```
+    
+
+### Environment Variables
+
+Configure the following system variables:
+
+```bash
+FRSKY_RF2_GIT_SRC = C:\GitHub\rotorflight-lua-ethos\
+FRSKY_SIM_BIN = C:\Program Files (x86)\FrSky\Ethos\X18S\simulator.exe
+FRSKY_SIM_SRC = C:\Program Files (x86)\FrSky\Ethos\X18S\scripts
+FRSKY_REMOTE_SRC = F:\scripts
+```
+
+You may use a comma-separated list in `FRSKY_SIM_SRC` to deploy to multiple simulators simultaneously.
+
+### VS Code Tasks
+
+-   **SIM: Deploy** – Pushes scripts to the simulator
+    
+-   **SIM: Deploy & Launch** – Deploys and starts simulator with debug output
+    
+-   **Remote: Deploy** – Installs scripts to a connected transmitter via USB
+    
 
 ## Origins
 
