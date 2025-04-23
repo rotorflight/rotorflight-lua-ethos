@@ -60,8 +60,8 @@ local EVT_VIRTUAL_NEXT = 98
 local MENU_TITLE_BGCOLOR, ITEM_TEXT_SELECTED, ITEM_TEXT_NORMAL, ITEM_TEXT_EDITING
 
 -- Initialize two global vars
-bit32 = assert(loadfile("/scripts/RF2/LIBS/bit32.lua"))()
-assert(loadfile("/scripts/RF2/rf2.lua"))()
+bit32 = assert(loadfile("./LIBS/bit32.lua"))()
+assert(loadfile("./rf2.lua"))()
 
 local function invalidatePages()
     Page = nil
@@ -194,7 +194,7 @@ local function createPopupMenu()
         popupMenu[#popupMenu + 1] = { t = "Reload", f = invalidatePages }
     end
     popupMenu[#popupMenu + 1] = { t = "Reboot", f = rebootFc }
-    popupMenu[#popupMenu + 1] = { t = "Acc Cal", f = function() confirm("/scripts/RF2/CONFIRM/acc_cal.lua") end }
+    popupMenu[#popupMenu + 1] = { t = "Acc Cal", f = function() confirm("./CONFIRM/acc_cal.lua") end }
 end
 
 local function incMax(val, inc, base)
@@ -290,7 +290,7 @@ local function create()
     rf2.mspQueue.maxRetries = rf2.protocol.maxRetries
     rf2.mspHelper = assert(rf2.loadScript("MSP/mspHelper.lua"))()
     assert(rf2.loadScript(rf2.protocol.mspTransport))()
-    assert(rf2.loadScript("MSP/common.lua"))()
+    rf2.mspCommon = assert(rf2.loadScript("MSP/common.lua"))()
 
     -- Initial var setting
     --saveTimeout = rf2.protocol.saveTimeout
@@ -771,7 +771,7 @@ local function close()
 	system.exit()
 end
 
-local icon = lcd.loadMask("/scripts/RF2/RF.png")
+local icon = lcd.loadMask("./RF.png")
 
 local function init()
     system.registerSystemTool({name=name, icon=icon, wakeup=wakeup, paint=paint, event=event, close=close})
