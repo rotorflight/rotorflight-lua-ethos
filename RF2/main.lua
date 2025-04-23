@@ -290,7 +290,7 @@ local function create()
     rf2.mspQueue.maxRetries = rf2.protocol.maxRetries
     rf2.mspHelper = assert(rf2.loadScript("MSP/mspHelper.lua"))()
     assert(rf2.loadScript(rf2.protocol.mspTransport))()
-    assert(rf2.loadScript("MSP/common.lua"))()
+    rf2.mspCommon = assert(rf2.loadScript("MSP/common.lua"))()
 
     -- Initial var setting
     --saveTimeout = rf2.protocol.saveTimeout
