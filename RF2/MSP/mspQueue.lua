@@ -67,8 +67,8 @@ function MspQueueController:processQueue()
             self.retryCount = self.retryCount + 1
         end
 
-        mspProcessTxQ()
-        cmd, buf, err = mspPollReply()
+        rf2.common.mspProcessTxQ()
+        cmd, buf, err = rf2.common.mspPollReply()
     else
         --rf2.print("Sending  cmd "..self.currentMessage.command..": {" .. joinTableItems(self.currentMessage.payload, ", ") .. "}")
         if not self.currentMessage.simulatorResponse then
