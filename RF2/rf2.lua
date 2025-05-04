@@ -1,6 +1,6 @@
 -- All RF2 globals should be stored in the rf2 table, to avoid conflict with globals from other scripts.
 rf2 = {
-    baseDir = "/scripts/RF2/",
+    baseDir = "./",
     runningInSimulator = system:getVersion().simulation,
 
     sportTelemetryPop = function()
