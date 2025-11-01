@@ -1,6 +1,3 @@
--- RotorFlight + ETHOS Lua configuration
-local LUA_VERSION = "2.2.0-RC3"
-
 local uiStatus =
 {
     init     = 1,
@@ -60,8 +57,8 @@ local EVT_VIRTUAL_NEXT = 98
 local MENU_TITLE_BGCOLOR, ITEM_TEXT_SELECTED, ITEM_TEXT_NORMAL, ITEM_TEXT_EDITING
 
 -- Initialize two global vars
-bit32 = assert(loadfile("/scripts/RF2/LIBS/bit32.lua"))()
-assert(loadfile("/scripts/RF2/rf2.lua"))()
+bit32 = assert(loadfile("./LIBS/bit32.lua"))()
+assert(loadfile("./rf2.lua"))()
 
 local function invalidatePages()
     Page = nil
@@ -89,15 +86,9 @@ rf2.displayMessage = function(title, text)
     rf2.lcdNeedsInvalidate = true
 end
 
-rf2.storeCurrentField = function()
-    rf2.currentField = currentField
-end
-
-rf2.setCurrentField = function()
-    if rf2.currentField then
-        currentField = rf2.currentField
-        rf2.currentField = nil
-    end
+rf2.onPageReady = function(page)
+    page.isReady = true
+    rf2.lcdNeedsInvalidate = true
 end
 
 local function rebootFc()
@@ -113,9 +104,9 @@ local function rebootFc()
     })
 end
 
-rf2.settingsSaved = function()
+rf2.settingsSaved = function(eepromWrite, reboot)
     -- check if this page requires writing to eeprom to save (most do)
-    if Page and Page.eepromWrite then
+    if eepromWrite then
         -- don't write again if we're already responding to earlier page.write()s
         if pageState ~= pageStatus.eepromWrite then
             pageState = pageStatus.eepromWrite
@@ -123,7 +114,7 @@ rf2.settingsSaved = function()
             {
                 command = 250, -- MSP_EEPROM_WRITE, fails when armed
                 processReply = function(self, buf)
-                    if Page.reboot then
+                    if reboot then
                         rebootFc()
                     else
                         invalidatePages()
@@ -194,7 +185,7 @@ local function createPopupMenu()
         popupMenu[#popupMenu + 1] = { t = "Reload", f = invalidatePages }
     end
     popupMenu[#popupMenu + 1] = { t = "Reboot", f = rebootFc }
-    popupMenu[#popupMenu + 1] = { t = "Acc Cal", f = function() confirm("/scripts/RF2/CONFIRM/acc_cal.lua") end }
+    popupMenu[#popupMenu + 1] = { t = "Acc Cal", f = function() confirm("./CONFIRM/acc_cal.lua") end }
 end
 
 local function incMax(val, inc, base)
@@ -290,11 +281,11 @@ local function create()
     rf2.mspQueue.maxRetries = rf2.protocol.maxRetries
     rf2.mspHelper = assert(rf2.loadScript("MSP/mspHelper.lua"))()
     assert(rf2.loadScript(rf2.protocol.mspTransport))()
-    assert(rf2.loadScript("MSP/common.lua"))()
+    rf2.mspCommon = assert(rf2.loadScript("MSP/common.lua"))()
 
     -- Initial var setting
     --saveTimeout = rf2.protocol.saveTimeout
-    screenTitle = "Rotorflight "..LUA_VERSION
+    screenTitle = "Rotorflight " .. rf2.luaVersion
     uiState = uiStatus.init
     init = nil
     popupMenu = nil
@@ -383,7 +374,7 @@ local function processEvent()
                 invalidatePages()
                 currentField = 1
                 uiState = uiStatus.mainMenu
-                screenTitle = "Rotorflight "..LUA_VERSION
+                screenTitle = "Rotorflight " .. rf2.luaVersion
 				lastEvent = nil
                 return 0
             end
@@ -412,8 +403,8 @@ local function processEvent()
     end
 end
 
-rf2.loadPageFiles = function(setCurrentPageToLastPage)
-    PageFiles = assert(rf2.loadScript("pages.lua"))()
+rf2.reloadMainMenu = function(setCurrentPageToLastPage)
+    PageFiles = rf2.executeScript("pages")
     if setCurrentPageToLastPage then
         currentPage = #PageFiles
     end
@@ -447,7 +438,7 @@ local function wakeup(widget)
 
     -- run_ui(event)
     if uiState == uiStatus.init then
-        screenTitle = "Rotorflight "..LUA_VERSION
+        screenTitle = "Rotorflight " .. rf2.luaVersion
         local prevInitText = init and init.t or nil
         init = init or assert(rf2.loadScript("ui_init.lua"))()
         local initSuccess = init.f()
@@ -457,7 +448,7 @@ local function wakeup(widget)
             return 0
         end
         init = nil
-        rf2.loadPageFiles()
+        rf2.reloadMainMenu()
         invalidatePages()
         uiState = prevUiState or uiStatus.mainMenu
         prevUiState = nil
@@ -771,7 +762,7 @@ local function close()
 	system.exit()
 end
 
-local icon = lcd.loadMask("/scripts/RF2/RF.png")
+local icon = lcd.loadMask("./RF.png")
 
 local function init()
     system.registerSystemTool({name=name, icon=icon, wakeup=wakeup, paint=paint, event=event, close=close})

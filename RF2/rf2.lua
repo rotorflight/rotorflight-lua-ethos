@@ -1,6 +1,7 @@
 -- All RF2 globals should be stored in the rf2 table, to avoid conflict with globals from other scripts.
 rf2 = {
-    baseDir = "/scripts/RF2/",
+    luaVersion = "2.2.1",
+    baseDir = "./",
     runningInSimulator = system:getVersion().simulation,
 
     sportTelemetryPop = function()
@@ -45,12 +46,38 @@ rf2 = {
         return true
     end,
 
-    loadScript = function(script)
-        -- loadScript also works on 1.5.9, but is undocumented (?)
-        if not rf2.startsWith(script, rf2.baseDir) then
-            script = rf2.baseDir..script
+    endsWith = function(str, postfix)
+        if #postfix > #str then return false end
+        for i = 1, #postfix do
+            if str:byte(#str - #postfix + i) ~= postfix:byte(i) then
+                return false
+            end
         end
+        return true
+    end,
+
+    loadScript = function(script)
+        if not rf2.startsWith(script, rf2.baseDir) then
+            script = rf2.baseDir .. script
+        end
+        if not rf2.endsWith(script, ".lua") then
+            script = script .. ".lua"
+        end
+        -- loadScript also works on 1.5.9, but is undocumented (?)
         return loadfile(script)
+    end,
+
+    executeScript = function(scriptName)
+        collectgarbage()
+        return assert(rf2.loadScript(scriptName))()
+    end,
+
+    useApi = function(apiName)
+        return rf2.executeScript("MSP/" .. apiName)
+    end,
+
+    loadSettings = function()
+        return rf2.executeScript("PAGES/helpers/settingsHelper").loadSettings();
     end,
 
     getWindowSize = function()
@@ -60,28 +87,25 @@ rf2 = {
         --return 472, 240
     end,
 
+    print = function(format, ...)
+        local str = string.format("RF2: " .. format, ...)
+        if rf2.runningInSimulator then
+            print(str)
+        else
+            --serialWrite(str .. "\r\n") -- 115200 bps
+            --rf2.log(str)
+        end
+    end,
+
     log = function(str)
         if rf2.runningInSimulator then
-            print(tostring(str))
+            rf2.print(tostring(str))
         else
             if not rf2.logfile then
                 rf2.logfile = io.open("/rf2.log", "a")
             end
             io.write(rf2.logfile, string.format("%.2f ", rf2.clock()) .. tostring(str) .. "\n")
         end
-    end,
-
-    print = function(str)
-        if rf2.runningInSimulator then
-            print("RF2: " .. tostring(str))
-        else
-            --serialWrite(tostring(str).."\r\n") -- 115200 bps
-            --rf2.log(str)
-        end
-    end,
-
-    useApi = function(apiName)
-        return assert(rf2.loadScript(rf2.baseDir.."MSP/" .. apiName .. ".lua"))()
     end,
 
     clock = os.clock,
@@ -99,5 +123,7 @@ rf2 = {
         celsius = " C",
         rpm = " RPM"
     },
+
+    canUseLvgl = false,
 
 }
