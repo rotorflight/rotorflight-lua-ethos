@@ -16,94 +16,106 @@ local mspTxBuf = {}
 local mspTxIdx = 1
 local mspTxCRC = 0
 
+-- merged v1/v2
+local mspVersion = 1 -- 1 or 2
+
 local common = {}
+
+function common.setProtocolVersion(v)
+    v = tonumber(v)
+    mspVersion = (v == 2) and 2 or 1
+end
+
+function common.getProtocolVersion()
+    return mspVersion
+end
 
 function common.mspProcessTxQ()
     if (#(mspTxBuf) == 0) then
         return false
     end
-    -- if not sensor:idle() then  -- was protocol.push() -- maybe sensor:idle()  here??
-        -- rf2.print("Sensor not idle... waiting to send cmd: "..tostring(mspLastReq))
-        -- return true
-    -- end
-    --rf2.print("Sending mspTxBuf size "..tostring(#mspTxBuf).." at Idx "..tostring(mspTxIdx).." for cmd: "..tostring(mspLastReq))
     local payload = {}
-    payload[1] = mspSeq + MSP_VERSION
+    local versionBits = (mspVersion == 2) and bit32.lshift(2,5) or MSP_VERSION
+    payload[1] = mspSeq + versionBits
     mspSeq = bit32.band(mspSeq + 1, 0x0F)
     if mspTxIdx == 1 then
-        -- start flag
         payload[1] = payload[1] + MSP_STARTFLAG
     end
     local i = 2
     while (i <= rf2.protocol.maxTxBufferSize) and mspTxIdx <= #mspTxBuf do
         payload[i] = mspTxBuf[mspTxIdx]
         mspTxIdx = mspTxIdx + 1
-        mspTxCRC = bit32.bxor(mspTxCRC,payload[i])
+        if mspVersion == 1 then mspTxCRC = bit32.bxor(mspTxCRC,payload[i]) end
         i = i + 1
     end
-    if i <= rf2.protocol.maxTxBufferSize then
-        payload[i] = mspTxCRC
-        i = i + 1
-        -- zero fill
-        while i <= rf2.protocol.maxTxBufferSize do
-            payload[i] = 0
-            i = i + 1
+    if mspVersion == 1 then
+        if i <= rf2.protocol.maxTxBufferSize then
+            payload[i] = mspTxCRC; i = i + 1
+            while i <= rf2.protocol.maxTxBufferSize do payload[i] = 0; i = i + 1 end
+            rf2.protocol.mspSend(payload)
+            mspTxBuf = {}; mspTxIdx = 1; mspTxCRC = 0
+            return false
         end
         rf2.protocol.mspSend(payload)
-        mspTxBuf = {}
-        mspTxIdx = 1
-        mspTxCRC = 0
-        return false
+        return true
+    else
+        while i <= rf2.protocol.maxTxBufferSize do payload[i] = payload[i] or 0; i = i + 1 end
+        rf2.protocol.mspSend(payload)
+        if mspTxIdx > #mspTxBuf then mspTxBuf = {}; mspTxIdx = 1; mspTxCRC = 0; return false end
+        return true
     end
-    rf2.protocol.mspSend(payload)
-    return true
 end
 
 function common.mspSendRequest(cmd, payload)
-    --rf2.print("Sending cmd "..cmd)
-    -- busy
     if #(mspTxBuf) ~= 0 or not cmd then
-        --rf2.print("Existing mspTxBuf is still being sent, failed send of cmd: "..tostring(cmd))
         return nil
     end
-    mspTxBuf[1] = #(payload)
-    mspTxBuf[2] = bit32.band(cmd,0xFF)  -- MSP command
-    for i=1,#(payload) do
-        mspTxBuf[i+2] = bit32.band(payload[i],0xFF)
+    if mspVersion == 1 then
+        mspTxBuf[1] = #(payload)
+        mspTxBuf[2] = bit32.band(cmd,0xFF)
+        for i=1,#(payload) do mspTxBuf[i+2] = bit32.band(payload[i],0xFF) end
+    else
+        local len = #(payload)
+        local cmd1 = cmd % 256
+        local cmd2 = math.floor(cmd / 256) % 256
+        local len1 = len % 256
+        local len2 = math.floor(len / 256) % 256
+        mspTxBuf = {0, cmd1, cmd2, len1, len2}
+        for i=1,len do mspTxBuf[#mspTxBuf+1] = (payload[i] or 0) % 256 end
     end
     mspLastReq = cmd
     return common.mspProcessTxQ()
 end
 
 local function mspReceivedReply(payload)
-    --rf2.print("Starting mspReceivedReply")
     local idx = 1
     local status = payload[idx]
     local version = bit32.rshift(bit32.band(status, 0x60), 5)
     local start = bit32.btest(status, 0x10)
     local seq = bit32.band(status, 0x0F)
     idx = idx + 1
-    --rf2.print("payload length: "..#payload)
-    --rf2.print(" msp sequence #:  "..string.format("%u",seq))
     if start then
-        -- start flag set
         mspRxBuf = {}
         mspRxError = bit32.btest(status, 0x80)
-        mspRxSize = payload[idx]
-        mspRxReq  = mspLastReq
-        idx = idx + 1
-        if version == 1 then
-            --rf2.print("version == 1")
-            mspRxReq = payload[idx]
+        if mspVersion == 2 then
+            local flags = payload[idx] or 0; idx = idx + 1
+            local cmd1  = payload[idx] or 0; idx = idx + 1
+            local cmd2  = payload[idx] or 0; idx = idx + 1
+            local len1  = payload[idx] or 0; idx = idx + 1
+            local len2  = payload[idx] or 0; idx = idx + 1
+            mspRxReq  = bit32.bor(bit32.lshift(bit32.band(cmd2, 0xFF), 8), bit32.band(cmd1, 0xFF))
+            mspRxSize = bit32.band(bit32.bor(bit32.lshift(bit32.band(len2, 0xFF), 8), bit32.band(len1, 0xFF)), 0xFFFF)
+            mspRxCRC  = 0
+            mspStarted= (mspRxReq == mspLastReq)
+        else
+            mspRxSize = payload[idx]
+            mspRxReq  = mspLastReq
             idx = idx + 1
-        end
-        mspRxCRC = bit32.bxor(mspRxSize, mspRxReq)
-        if mspRxReq == mspLastReq then
-            mspStarted = true
-            --rf2.print("Started cmd "..mspLastReq)
+            if version == 1 then mspRxReq = payload[idx]; idx = idx + 1 end
+            mspRxCRC = bit32.bxor(mspRxSize, mspRxReq)
+            if mspRxReq == mspLastReq then mspStarted = true end
         end
     elseif not mspStarted then
-		--rf2.print("  mspReceivedReply: missing Start flag")
         return nil
     elseif bit32.band(mspRemoteSeq + 1, 0x0F) ~= seq then
         mspStarted = false
@@ -111,24 +123,17 @@ local function mspReceivedReply(payload)
     end
     while (idx <= rf2.protocol.maxRxBufferSize) and (#mspRxBuf < mspRxSize) do
         mspRxBuf[#mspRxBuf + 1] = payload[idx]
-        mspRxCRC = bit32.bxor(mspRxCRC, payload[idx])
+        if mspVersion == 1 then mspRxCRC = bit32.bxor(mspRxCRC, payload[idx]) end
         idx = idx + 1
     end
-    if idx > rf2.protocol.maxRxBufferSize then
-		--rf2.print("  mspReceivedReply:  payload continues into next frame.")
-        -- Store the last sequence number so we can start there on the next continuation payload
+    if #mspRxBuf < mspRxSize then
         mspRemoteSeq = seq
         return false
     end
     mspStarted = false
-    -- check CRC
-    if mspRxCRC ~= payload[idx] and version == 0 then
-		--rf2.print("  mspReceivedReply:  payload checksum incorrect, message failed!")
-        --rf2.print("    Calculated mspRxCRC:  0x"..string.format("%X", mspRxCRC))
-        --rf2.print("    CRC from payload:     0x"..string.format("%X", payload[idx]))
+    if mspVersion == 1 and mspRxCRC ~= payload[idx] and version == 0 then
         return nil
     end
-    --rf2.print("  Got reply for cmd "..mspRxReq)
     return true
 end
 
