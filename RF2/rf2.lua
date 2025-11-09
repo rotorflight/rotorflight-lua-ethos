@@ -1,6 +1,6 @@
 -- All RF2 globals should be stored in the rf2 table, to avoid conflict with globals from other scripts.
 rf2 = {
-    luaVersion = "2.2.1",
+    luaVersion = "2.3.0-20251111",
     baseDir = "./",
     runningInSimulator = system:getVersion().simulation,
 
@@ -57,6 +57,7 @@ rf2 = {
     end,
 
     loadScript = function(script)
+        --rf2.print("Loading script %s", script)
         if not rf2.startsWith(script, rf2.baseDir) then
             script = rf2.baseDir .. script
         end
@@ -67,9 +68,9 @@ rf2 = {
         return loadfile(script)
     end,
 
-    executeScript = function(scriptName)
+    executeScript = function(scriptName, ...)
         collectgarbage()
-        return assert(rf2.loadScript(scriptName))()
+        return assert(rf2.loadScript(scriptName))(...)
     end,
 
     useApi = function(apiName)
@@ -80,12 +81,26 @@ rf2 = {
         return rf2.executeScript("PAGES/helpers/settingsHelper").loadSettings();
     end,
 
-    getWindowSize = function()
-        return lcd.getWindowSize()
-        --return 784, 406
-        --return 472, 288
-        --return 472, 240
+    saveSettings = function(settings)
+        return rf2.executeScript("PAGES/helpers/settingsHelper").saveSettings(settings);
     end,
+
+    clock = os.clock,
+
+    apiVersion = nil,
+
+    units = {
+        percentage = "%",
+        degrees = "°",
+        degreesPerSecond = "°/s",
+        herz = " Hz",
+        seconds = " s",
+        milliseconds = " ms",
+        volt = "V",
+        celsius = " C",
+        rpm = " RPM",
+        meters = " m"
+    },
 
     print = function(format, ...)
         local str = string.format("RF2: " .. format, ...)
@@ -108,22 +123,10 @@ rf2 = {
         end
     end,
 
-    clock = os.clock,
-
-    apiVersion = nil,
-
-    units = {
-        percentage = "%",
-        degrees = "°",
-        degreesPerSecond = "°/s",
-        herz = " Hz",
-        seconds = " s",
-        milliseconds = " ms",
-        volt = "V",
-        celsius = " C",
-        rpm = " RPM"
-    },
-
-    canUseLvgl = false,
-
+    getWindowSize = function()
+        return lcd.getWindowSize()
+        --return 784, 406
+        --return 472, 288
+        --return 472, 240
+    end
 }

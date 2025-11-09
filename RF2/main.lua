@@ -143,7 +143,7 @@ rf2.settingsSaved = function(eepromWrite, reboot)
     rf2.lcdNeedsInvalidate = true
 end
 
-rf2.saveSettings = function()
+rf2.savePage = function()
     if pageState ~= pageStatus.saving then
         pageState = pageStatus.saving
         saveTS = rf2.clock()
@@ -157,7 +157,7 @@ rf2.readPage = function()
 end
 
 local function requestPage()
-    if not Page.reqTS or Page.reqTS + rf2.protocol.pageReqTimeout <= rf2.clock() then
+    if not Page.reqTS or Page.reqTS + 5 <= rf2.clock() then
         Page.reqTS = rf2.clock()
         if Page.read then
             rf2.readPage()
@@ -180,7 +180,7 @@ local function createPopupMenu()
     popupMenu = {}
     if uiState == uiStatus.pages then
         if not Page.readOnly then
-            popupMenu[#popupMenu + 1] = { t = "Save Page", f = rf2.saveSettings }
+            popupMenu[#popupMenu + 1] = { t = "Save Page", f = rf2.savePage }
         end
         popupMenu[#popupMenu + 1] = { t = "Reload", f = invalidatePages }
     end
@@ -278,13 +278,11 @@ local function create()
     rf2.protocol = assert(rf2.loadScript("protocols.lua"))()
     rf2.radio = assert(rf2.loadScript("radios.lua"))().msp
     rf2.mspQueue = assert(rf2.loadScript("MSP/mspQueue.lua"))()
-    rf2.mspQueue.maxRetries = rf2.protocol.maxRetries
+    rf2.mspQueue.maxRetries = 3
     rf2.mspHelper = assert(rf2.loadScript("MSP/mspHelper.lua"))()
-    assert(rf2.loadScript(rf2.protocol.mspTransport))()
     rf2.mspCommon = assert(rf2.loadScript("MSP/common.lua"))()
 
     -- Initial var setting
-    --saveTimeout = rf2.protocol.saveTimeout
     screenTitle = "Rotorflight " .. rf2.luaVersion
     uiState = uiStatus.init
     init = nil
@@ -345,7 +343,7 @@ local function processEvent()
             uiState = uiStatus.pages
             pageState = pageStatus.display  -- added in case we reboot from popup over main menu
         elseif lastEvent == EVT_VIRTUAL_ENTER_LONG then
-            rf2.print("Popup from main menu")
+            --rf2.print("Popup from main menu")
             createPopupMenu()
         end
     elseif uiState == uiStatus.pages then
@@ -430,7 +428,7 @@ local function wakeup(widget)
 	end
 
     if (rf2.radio == nil or rf2.protocol == nil) then
-        rf2.print("Error:  wakeup() called but create must have failed!")
+        --rf2.print("Error:  wakeup() called but create must have failed!")
         return 0
     end
 
@@ -454,7 +452,7 @@ local function wakeup(widget)
         prevUiState = nil
     elseif uiState == uiStatus.pages then
         if pageState == pageStatus.saving then
-            if saveTS + rf2.protocol.saveTimeout < rf2.clock() then
+            if saveTS + 5 < rf2.clock() then
                 --rf2.print("Save timeout!")
                 pageState = pageStatus.display
                 invalidatePages()
@@ -550,77 +548,77 @@ local function event(widget, category, value, x, y)
 end
 
 local function drawPage()
+    if not Page or not Page.fields or #Page.fields == 0 then return end
+
     local LCD_W, LCD_H = rf2.getWindowSize()
-    if Page then
-        if currentField > #Page.fields then currentField = #Page.fields end
-        local yMinLim = rf2.radio.yMinLimit
-        local yMaxLim = rf2.radio.yMaxLimit
-        local currentFieldY = Page.fields[currentField].y
-        if currentFieldY <= Page.fields[1].y then
-            pageScrollY = 0
-        elseif currentFieldY - pageScrollY <= yMinLim then
-            pageScrollY = currentFieldY - yMinLim
-        elseif currentFieldY - pageScrollY >= yMaxLim then
-            pageScrollY = currentFieldY - yMaxLim
+    if currentField > #Page.fields then currentField = #Page.fields end
+    local yMinLim = rf2.radio.yMinLimit
+    local yMaxLim = rf2.radio.yMaxLimit
+    local currentFieldY = Page.fields[currentField].y
+    if currentFieldY <= Page.fields[1].y then
+        pageScrollY = 0
+    elseif currentFieldY - pageScrollY <= yMinLim then
+        pageScrollY = currentFieldY - yMinLim
+    elseif currentFieldY - pageScrollY >= yMaxLim then
+        pageScrollY = currentFieldY - yMaxLim
+    end
+    for i=1,#Page.labels do
+        local f = Page.labels[i]
+        local y = f.y - pageScrollY
+        if y >= 0 and y <= LCD_H then
+            lcd.font((f.bold == false and FONT_STD) or FONT_BOLD)
+            lcd.color(ITEM_TEXT_NORMAL)
+            lcd.drawText(f.x, y, f.t)
         end
-        for i=1,#Page.labels do
-            local f = Page.labels[i]
-            local y = f.y - pageScrollY
-            if y >= 0 and y <= LCD_H then
-                lcd.font((f.bold == false and FONT_STD) or FONT_BOLD)
+    end
+    for i=1,#Page.fields do
+        local val = "---"
+        local f = Page.fields[i]
+        if f.data and f.data.value then
+            val = f.data.value
+            if type(val) == "number" then
+                val = val / (f.data.scale or 1)
+            end
+            if f.data.table and f.data.table[val] then
+                val = f.data.table[val]
+            end
+        end
+        local y = f.y - pageScrollY
+        if y >= 0 and y <= LCD_H then
+            if fieldIsButton(f) then
+                val = f.t
+            elseif f.t then
+                lcd.font(FONT_STD)
                 lcd.color(ITEM_TEXT_NORMAL)
                 lcd.drawText(f.x, y, f.t)
             end
-        end
-        for i=1,#Page.fields do
-            local val = "---"
-            local f = Page.fields[i]
-            if f.data and f.data.value then
-                val = f.data.value
-                if type(val) == "number" then
-                    val = val / (f.data.scale or 1)
-                end
-                if f.data.table and f.data.table[val] then
-                    val = f.data.table[val]
-                end
-            end
-            local y = f.y - pageScrollY
-            if y >= 0 and y <= LCD_H then
-                if fieldIsButton(f) then
-                    val = f.t
-                elseif f.t then
-                    lcd.font(FONT_STD)
-                    lcd.color(ITEM_TEXT_NORMAL)
-                    lcd.drawText(f.x, y, f.t)
-                end
-                if i == currentField then
-                    if pageState == pageStatus.editing then
-                        lcd.font(FONT_BOLD)
-                        lcd.color(ITEM_TEXT_EDITING)
-                    else
-                        lcd.font(FONT_BOLD)
-                        lcd.color(ITEM_TEXT_SELECTED)
-                    end
+            if i == currentField then
+                if pageState == pageStatus.editing then
+                    lcd.font(FONT_BOLD)
+                    lcd.color(ITEM_TEXT_EDITING)
                 else
-                    lcd.font(FONT_STD)
-                    lcd.color(ITEM_TEXT_NORMAL)
+                    lcd.font(FONT_BOLD)
+                    lcd.color(ITEM_TEXT_SELECTED)
                 end
-                strVal = ""
-                --rf2.print("val is "..type(val))
-                if (type(val) == "string") then
-                    strVal = val
-                elseif (type(val) == "number") then
-                    if math.floor(val) == val then
-                        strVal = string.format("%i",val)
-                    else
-                        strVal = tostring(val)
-                    end
-                else
-                    strVal = val
-                end
-                strVal = strVal .. ((f.data and f.data.unit) or "")
-                lcd.drawText(f.sp or f.x, y, strVal)
+            else
+                lcd.font(FONT_STD)
+                lcd.color(ITEM_TEXT_NORMAL)
             end
+            strVal = ""
+            --rf2.print("val is "..type(val))
+            if (type(val) == "string") then
+                strVal = val
+            elseif (type(val) == "number") then
+                if math.floor(val) == val then
+                    strVal = string.format("%i",val)
+                else
+                    strVal = tostring(val)
+                end
+            else
+                strVal = val
+            end
+            strVal = strVal .. ((f.data and f.data.unit) or "")
+            lcd.drawText(f.sp or f.x, y, strVal)
         end
     end
 end
