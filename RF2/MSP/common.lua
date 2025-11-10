@@ -1,9 +1,6 @@
--- Protocol version
-local MSP_VERSION = bit32.lshift(1,5)
-local MSP_STARTFLAG = bit32.lshift(1,4)
+-- Usage: local mspSendRequest, mspProcessTxQ, mspPollReply, mspClearTxBuf = rf2.executeScript("MSP/common")
 
--- Sequence number for next MSP packet
-local mspSeq = 0
+local mspSeq = 0 -- Sequence number for next MSP packet
 local mspRemoteSeq = 0
 local mspRxBuf = {}
 local mspRxError = false
@@ -16,9 +13,10 @@ local mspTxBuf = {}
 local mspTxIdx = 1
 local mspTxCRC = 0
 
-local common = {}
+local protocolScript = "MSP/" .. rf2.executeScript("protocols")
+local mspSend, mspPoll, telemetryPush, maxTxBufferSize, maxRxBufferSize = rf2.executeScript(protocolScript)
 
-function common.mspProcessTxQ()
+local function mspProcessTxQ()
     if (#(mspTxBuf) == 0) then
         return false
     end
@@ -28,38 +26,40 @@ function common.mspProcessTxQ()
     -- end
     --rf2.print("Sending mspTxBuf size "..tostring(#mspTxBuf).." at Idx "..tostring(mspTxIdx).." for cmd: "..tostring(mspLastReq))
     local payload = {}
+    local MSP_VERSION = bit32.lshift(1,5)
     payload[1] = mspSeq + MSP_VERSION
     mspSeq = bit32.band(mspSeq + 1, 0x0F)
     if mspTxIdx == 1 then
         -- start flag
+        local MSP_STARTFLAG = bit32.lshift(1,4)
         payload[1] = payload[1] + MSP_STARTFLAG
     end
     local i = 2
-    while (i <= rf2.protocol.maxTxBufferSize) and mspTxIdx <= #mspTxBuf do
+    while (i <= maxTxBufferSize) and mspTxIdx <= #mspTxBuf do
         payload[i] = mspTxBuf[mspTxIdx]
         mspTxIdx = mspTxIdx + 1
         mspTxCRC = bit32.bxor(mspTxCRC,payload[i])
         i = i + 1
     end
-    if i <= rf2.protocol.maxTxBufferSize then
+    if i <= maxTxBufferSize then
         payload[i] = mspTxCRC
         i = i + 1
         -- zero fill
-        while i <= rf2.protocol.maxTxBufferSize do
+        while i <= maxTxBufferSize do
             payload[i] = 0
             i = i + 1
         end
-        rf2.protocol.mspSend(payload)
+        mspSend(payload)
         mspTxBuf = {}
         mspTxIdx = 1
         mspTxCRC = 0
         return false
     end
-    rf2.protocol.mspSend(payload)
+    mspSend(payload)
     return true
 end
 
-function common.mspSendRequest(cmd, payload)
+local function mspSendRequest(cmd, payload)
     --rf2.print("Sending cmd "..cmd)
     -- busy
     if #(mspTxBuf) ~= 0 or not cmd then
@@ -72,7 +72,7 @@ function common.mspSendRequest(cmd, payload)
         mspTxBuf[i+2] = bit32.band(payload[i],0xFF)
     end
     mspLastReq = cmd
-    return common.mspProcessTxQ()
+    return mspProcessTxQ()
 end
 
 local function mspReceivedReply(payload)
@@ -109,12 +109,12 @@ local function mspReceivedReply(payload)
         mspStarted = false
         return nil
     end
-    while (idx <= rf2.protocol.maxRxBufferSize) and (#mspRxBuf < mspRxSize) do
+    while (idx <= maxRxBufferSize) and (#mspRxBuf < mspRxSize) do
         mspRxBuf[#mspRxBuf + 1] = payload[idx]
         mspRxCRC = bit32.bxor(mspRxCRC, payload[idx])
         idx = idx + 1
     end
-    if idx > rf2.protocol.maxRxBufferSize then
+    if idx > maxRxBufferSize then
 		--rf2.print("  mspReceivedReply:  payload continues into next frame.")
         -- Store the last sequence number so we can start there on the next continuation payload
         mspRemoteSeq = seq
@@ -132,10 +132,10 @@ local function mspReceivedReply(payload)
     return true
 end
 
-function common.mspPollReply()
+local function mspPollReply()
     local startTime = rf2.clock()
     while (rf2.clock() - startTime < 0.05) do
-        local mspData = rf2.protocol.mspPoll()
+        local mspData = mspPoll()
         if mspData ~= nil and mspReceivedReply(mspData) then
             mspLastReq = 0
             return mspRxReq, mspRxBuf, mspRxError
@@ -143,8 +143,8 @@ function common.mspPollReply()
     end
 end
 
-function common.mspClearTxBuf()
+local function mspClearTxBuf()
     mspTxBuf = {}
 end
 
-return common
+return mspSendRequest, mspProcessTxQ, mspPollReply, mspClearTxBuf
