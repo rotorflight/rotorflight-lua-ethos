@@ -438,6 +438,13 @@ local function background()
 end
 
 local function runProtected()
+
+    -- Check if the RF Suite is active and return if it is
+    -- this is to prevent elrs telemetry clashing with rfsuite elrs telemetry.
+    if rfsuite and rfsuite.tasks and rfsuite.tasks.active() then
+        return 
+    end
+
     local status, err = pcall(background)
     --if not status then rf2.print(err) end
 end
