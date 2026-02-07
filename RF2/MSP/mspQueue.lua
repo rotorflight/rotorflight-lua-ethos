@@ -96,8 +96,8 @@ function MspQueueController:processQueue()
     --end
 
     --if cmd == 217 then   -- MSP_ESC_PARAMETERS
-    --  buf = self.currentMessage.simulatorResponse
-    --  err = nil
+    --     buf = self.currentMessage.simulatorResponse
+    --     err = nil
     --end
 
     if (cmd == self.currentMessage.command and not err) or (self.currentMessage.command == 68 and self.retryCount == 2) then -- 68 = MSP_REBOOT

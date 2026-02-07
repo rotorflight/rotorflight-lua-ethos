@@ -1,6 +1,6 @@
 -- All RF2 globals should be stored in the rf2 table, to avoid conflict with globals from other scripts.
 rf2 = {
-    luaVersion = "2.3.0-20251111",
+    luaVersion = "2.3.0-20260208",
     baseDir = "./",
     runningInSimulator = system:getVersion().simulation,
 

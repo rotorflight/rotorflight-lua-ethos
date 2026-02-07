@@ -86,7 +86,7 @@ local function buildForm()
 
     x = margin
     incY(lineSpacing * 0.5)
-    fields[13] = { t = "Rates type",                      x = x,          y = incY(lineSpacing), sp = x + sp, data = rcTuning.rates_type, postEdit = function(self, page) page.updateRatesType(page) end }
+    fields[13] = { t = "Rates type",     x = x, y = incY(lineSpacing), sp = x + sp, data = rcTuning.rates_type, postEdit = function(self, page) page.updateRatesType(page) end }
 
     incY(lineSpacing * 0.5)
     fields[14] = { t = "Current rate profile",            x = x,          y = incY(lineSpacing), sp = x + sp * 1.17, data = { min = 0, max = 5, value = rcTuning.currentRateProfile, table = { [0] = "1", "2", "3", "4", "5", "6" } }, preEdit = startEditing, postEdit = endRateEditing }

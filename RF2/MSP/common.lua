@@ -90,7 +90,7 @@ local function mspReceivedReply(payload)
         mspRxBuf = {}
         mspRxError = bit32.btest(status, 0x80)
         mspRxSize = payload[idx]
-        mspRxReq  = mspLastReq
+        mspRxReq = mspLastReq
         idx = idx + 1
         if version == 1 then
             --rf2.print("version == 1")
@@ -103,7 +103,7 @@ local function mspReceivedReply(payload)
             --rf2.print("Started cmd "..mspLastReq)
         end
     elseif not mspStarted then
-		--rf2.print("  mspReceivedReply: missing Start flag")
+        --rf2.print("  mspReceivedReply: missing Start flag")
         return nil
     elseif bit32.band(mspRemoteSeq + 1, 0x0F) ~= seq then
         mspStarted = false
@@ -115,7 +115,7 @@ local function mspReceivedReply(payload)
         idx = idx + 1
     end
     if idx > maxRxBufferSize then
-		--rf2.print("  mspReceivedReply:  payload continues into next frame.")
+        --rf2.print("  mspReceivedReply:  payload continues into next frame.")
         -- Store the last sequence number so we can start there on the next continuation payload
         mspRemoteSeq = seq
         return false
@@ -123,7 +123,7 @@ local function mspReceivedReply(payload)
     mspStarted = false
     -- check CRC
     if mspRxCRC ~= payload[idx] and version == 0 then
-		--rf2.print("  mspReceivedReply:  payload checksum incorrect, message failed!")
+        --rf2.print("  mspReceivedReply:  payload checksum incorrect, message failed!")
         --rf2.print("    Calculated mspRxCRC:  0x"..string.format("%X", mspRxCRC))
         --rf2.print("    CRC from payload:     0x"..string.format("%X", payload[idx]))
         return nil
