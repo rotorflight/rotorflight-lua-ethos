@@ -1,4 +1,4 @@
-# 2.3.0-20251111
+# 2.3.0-20260208
 
 This is a *development snapshot* of the Rotorflight 2.3.0 Lua Scripts for FrSky Ethos.
 
@@ -6,11 +6,11 @@ This is a *development snapshot* of the Rotorflight 2.3.0 Lua Scripts for FrSky 
 
 The download locations are:
 
-- [Rotorflight Configurator](https://github.com/rotorflight/rotorflight-configurator/releases/tag/snapshot/2.3.0-20251111)
-- [Rotorflight Blackbox](https://github.com/rotorflight/rotorflight-blackbox/releases/tag/snapshot/2.3.0-20251111)
-- [Lua Scripts for EdgeTX and OpenTX](https://github.com/rotorflight/rotorflight-lua-scripts/releases/tag/snapshot/2.3.0-20251111)
-- [Lua Scripts for FrSky Ethos](https://github.com/rotorflight/rotorflight-lua-ethos/releases/tag/snapshot/2.3.0-202511111)
-- [Lua Suite for FrSky Ethos](https://github.com/rotorflight/rotorflight-lua-ethos-suite/releases/tag/snapshot/2.3.0-20251111)
+- [Rotorflight Configurator](https://github.com/rotorflight/rotorflight-configurator/releases/tag/snapshot/2.3.0-20260208)
+- [Rotorflight Blackbox](https://github.com/rotorflight/rotorflight-blackbox/releases/tag/snapshot/2.3.0-20260208)
+- [Lua Scripts for EdgeTX and OpenTX](https://github.com/rotorflight/rotorflight-lua-scripts/releases/tag/snapshot/2.3.0-20260208)
+- [Lua Scripts for FrSky Ethos](https://github.com/rotorflight/rotorflight-lua-ethos/releases/tag/snapshot/2.3.0-202602081)
+- [Lua Suite for FrSky Ethos](https://github.com/rotorflight/rotorflight-lua-ethos-suite/releases/tag/snapshot/2.3.0-20260208)
 
 ## Notes
 
@@ -20,6 +20,8 @@ For more information, please join the Rotorflight Discord chat.
 
 ## Changes Since Version 2.2.1
 
+- *Rates* page: added Rotorflight rates
+- *Hobbywing V5 ESC* page: better support for setting BEC voltage
 - *Model* page: added support for per model statistics like *Total flights* and *Total time*
 - Added support for the new Rotorflight governor
 - Updated FLYROTOR ESC parameters
