@@ -1,5 +1,5 @@
 local template = rf2.executeScript(rf2.radio.template)
-local settingsHelper = rf2.executeScript("PAGES/helpers/settingsHelper")
+local settings = rf2.loadSettings()
 local margin = template.margin
 local indent = template.indent
 local lineSpacing = template.lineSpacing
@@ -11,13 +11,13 @@ local y = yMinLim - lineSpacing
 local function incY(val) y = y + val return y end
 local labels = {}
 local fields = {}
-local settings = settingsHelper.loadSettings()
 local hideShow = { [0] = "Hide", "Show" }
 local offOn = { [0] = "Off", "On" }
+local canUseLvgl = rf2.executeScript("F/canUseLvgl")()
 
 y = yMinLim - tableSpacing.header
 labels[1] = { t = "Display Various Pages",   x = x, y = incY(lineSpacing) }
-fields[1] = { t = "Model on TX",             x = x + indent, y = incY(lineSpacing), sp = x + sp }
+fields[1] = { t = "Model",                   x = x + indent, y = incY(lineSpacing), sp = x + sp }
 fields[2] = { t = "Experimental (!)",        x = x + indent, y = incY(lineSpacing), sp = x + sp }
 
 incY(lineSpacing * 0.5)
@@ -32,7 +32,7 @@ incY(lineSpacing * 0.5)
 labels[3] = { t = "Rf2bg Options",           x = x, y = incY(lineSpacing) }
 fields[8] = { t = "Adjustment Teller",       x = x + indent, y = incY(lineSpacing), sp = x + sp }
 
-if rf2.canUseLvgl then
+if canUseLvgl then
     incY(lineSpacing * 0.5)
     labels[4] = { t = "Tool Options",        x = x, y = incY(lineSpacing) }
     fields[9] = { t = "Use touch UI",        x = x + indent, y = incY(lineSpacing), sp = x + sp }
@@ -47,7 +47,7 @@ local function setValues()
     fields[6].data = { value = settings.showXdfly or 0, min = 0, max = 1, table = hideShow }
     fields[7].data = { value = settings.showYge or 0, min = 0, max = 1, table = hideShow }
     fields[8].data = { value = settings.useAdjustmentTeller or 0, min = 0, max = 1, table = offOn }
-    if rf2.canUseLvgl then
+    if canUseLvgl then
         fields[9].data = { value = settings.useLvgl or 1, min = 0, max = 1, table = offOn }
     end
 end
@@ -65,11 +65,14 @@ return {
         settings.showTribunus = fields[5].data.value
         settings.showXdfly = fields[6].data.value
         settings.showYge = fields[7].data.value
-        settings.useAdjustmentTeller = fields[8].data.value
-        if rf2.canUseLvgl then
+        if settings.useAdjustmentTeller ~= fields[8].data.value then
+            settings.useAdjustmentTeller = fields[8].data.value
+            rf2.executeScript("F/pilotConfigReset")() -- restart rf2bg
+        end
+        if canUseLvgl then
             settings.useLvgl = fields[9].data.value
         end
-        settingsHelper.saveSettings(settings)
+        rf2.saveSettings(settings)
         rf2.reloadMainMenu(true)
         rf2.settingsSaved(false, false)
     end,

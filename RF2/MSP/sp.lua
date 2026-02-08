@@ -1,26 +1,15 @@
-local LOCAL_SENSOR_ID  = 0x0D
-local SMARTPORT_REMOTE_SENSOR_ID = 0x1B
-local FPORT_REMOTE_SENSOR_ID = 0x00
-local REQUEST_FRAME_ID = 0x30
-local REPLY_FRAME_ID   = 0x32
-
 local lastSensorId, lastFrameId, lastDataId, lastValue
 
-rf2.protocol.mspSend = function(payload)
+local function mspSend(payload)
     local dataId = payload[1] + bit32.lshift(payload[2], 8)
     local value = 0
     for i = 3, #payload do
         value = value + bit32.lshift(payload[i], (i - 3) * 8)
     end
-    return rf2.protocol.push(LOCAL_SENSOR_ID, REQUEST_FRAME_ID, dataId, value)
-end
 
-rf2.protocol.mspRead = function(cmd)
-    return rf2.mspCommon.mspSendRequest(cmd, {})
-end
-
-rf2.protocol.mspWrite = function(cmd, payload)
-    return rf2.mspCommon.mspSendRequest(cmd, payload)
+    local LOCAL_SENSOR_ID  = 0x0D
+    local REQUEST_FRAME_ID = 0x30
+    return rf2.sportTelemetryPush(LOCAL_SENSOR_ID, REQUEST_FRAME_ID, dataId, value)
 end
 
 -- Discards duplicate data from lua input buffer
@@ -41,12 +30,16 @@ local function smartPortTelemetryPop()
     end
 end
 
-rf2.protocol.mspPoll = function()
+local function mspPoll()
+    local SMARTPORT_REMOTE_SENSOR_ID = 0x1B
+    local FPORT_REMOTE_SENSOR_ID = 0x00
+    local REPLY_FRAME_ID = 0x32
+
     while true do
         local sensorId, frameId, dataId, value = smartPortTelemetryPop()
         if (sensorId == SMARTPORT_REMOTE_SENSOR_ID or sensorId == FPORT_REMOTE_SENSOR_ID) and frameId == REPLY_FRAME_ID then
-	 	    --rf2.print("sensorId:0x"..string.format("%X", sensorId).." frameId:0x"..string.format("%X", frameId).." dataId:0x"..string.format("%X", dataId).." value:0x"..string.format("%X", value))
-      	  	local payload = {}
+            --rf2.print("sensorId:0x"..string.format("%X", sensorId).." frameId:0x"..string.format("%X", frameId).." dataId:0x"..string.format("%X", dataId).." value:0x"..string.format("%X", value))
+            local payload = {}
             payload[1] = bit32.band(dataId, 0xFF)
             dataId = bit32.rshift(dataId, 8)
             payload[2] = bit32.band(dataId, 0xFF)
@@ -60,9 +53,13 @@ rf2.protocol.mspPoll = function()
             --for i=1,#payload do
             --    rf2.print(  "["..string.format("%u", i).."]:  0x"..string.format("%X", payload[i]))
             --end
-        	return payload
+            return payload
         elseif sensorId == nil then
             return nil
         end
     end
 end
+
+local maxTxBufferSize = 6
+local maxRxBufferSize = 6
+return mspSend, mspPoll, rf2.sportTelemetryPush, maxTxBufferSize, maxRxBufferSize

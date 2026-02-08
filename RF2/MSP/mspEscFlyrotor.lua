@@ -1,18 +1,18 @@
 local statusOptions = { [0] = "Disable", "Enable" }
-local govMode = { [0] = "Ext Governor", "Esc Governor" }
+local govMode = { [0] = "ESC Governor", "Linear Throttle", "RF Gyro Governor" }
 local becVoltage = { [0] = "Disable", "7.5V", "8.0V", "8.5V", "12.0V" }
-local timing = { [0] = "Auto", "1°", "2°", "3°", "4°", "6°", "7°", "8°", "9°", "10°" }
-local motorDirection = { [0] = "CW", "CCW" }
-local fanControl = { [0] = "Automatic", "Always On" }
-local throttleProtocols = { [0] = "PWM", "RESERVE" }
-local telemetryProtocols = { [0] = "FLYROTOR", "RESERVE" }
-local ledColors = { [0] = "CUSTOM", "BLACK", "RED", "GREEN", "BLUE", "YELLOW", "MAGENTA", "CYAN", "WHITE", "ORANGE", "GRAY", "MAROON", "DARK_GREEN", "NAVY", "PURPLE", "TEAL", "SILVER", "PINK", "GOLD", "BROWN", "LIGHT_BLUE", "FL_PINK", "FL_ORANGE", "FL_LIME", "FL_MINT", "FL_CYAN", "FL_PURPLE", "FL_HOT_PINK", "FL_LIGHT_YELLOW", "FL_AQUAMARINE", "FL_GOLD", "FL_DEEP_PINK", "FL_NEON_GREEN", "FL_ORANGE_RED" }
+local timing = { [0] = "Auto", "1°", "2°", "3°", "4°", "5°", "6°", "7°", "8°", "9°", "10°" }
+local motorDirection = { [0] = "Normal", "Reversed" }
+local fanControl = { [0] = "Temp Control", "Always On", "Always Off" }
+local throttleProtocols = { [0] = "PWM" }
+local telemetryProtocols = { [0] = "FLYROTOR" }
+local ledColors = { [0] = "CUSTOM", "OFF", "RED", "GREEN", "BLUE", "YELLOW", "MAGENTA", "CYAN", "WHITE", "ORANGE", "GRAY", "MAROON", "DARK_GREEN", "NAVY", "PURPLE", "TEAL", "SILVER", "PINK", "GOLD", "BROWN", "LIGHT_BLUE", "FL_PINK", "FL_ORANGE", "FL_LIME", "FL_MINT", "FL_CYAN", "FL_PURPLE", "FL_HOT_PINK", "FL_LIGHT_YELLOW", "FL_AQUAMARINE", "FL_GOLD", "FL_DEEP_PINK", "FL_NEON_GREEN", "FL_ORANGE_RED" }
 
 local function getDefaults()
     return {
         esc_signature = nil,
         command = nil,
-        unknown1 = nil,
+        type = nil,
         amperage = nil,
         serial_number1 = nil,
         serial_number2 = nil,
@@ -23,7 +23,8 @@ local function getDefaults()
         fw_minor = nil,
         fw_patch = nil,
         hw_version = nil,
-        unknown2 = nil,
+        thr_min = nil,
+        thr_max = nil,
         esc_mode = { min = 0, max = #govMode, table = govMode },
         cell_count = { min = 4, max = 14 },
         low_voltage = { min = 28, max = 38, scale = 10, unit = rf2.units.volt },
@@ -37,17 +38,20 @@ local function getDefaults()
         current_gain = { min = -20, max = 20 },
         fan_control = { min = 0, max = #fanControl, table = fanControl },
         soft_start = { min = 5, max = 55, unit = rf2.units.seconds },
-        p_gain = { min = 1, max = 100 },
-        i_gain = { min = 1, max = 100 },
-        d_gain = { min = 0, max = 100 },
-        max_motor_erpm = { min = 0, max = 1000000, mult = 130000},
+        auto_restart_time = { min = 0, max = 100, unit = rf2.units.seconds },
+        restart_acc = { min = 1, max = 10 },
+        p_gain = { min = 0, max = 100 },
+        i_gain = { min = 0, max = 100 },
+        active_freewheel = { min = 0, max = #statusOptions, table = statusOptions},
+        drive_freq = { min = 10, max = 24 },
+        max_motor_erpm = { min = 1000, max = 1000000, mult = 100 },
         throttle_protocol = { min = 0, max = #throttleProtocols, table = throttleProtocols },
         telemetry_protocol = { min = 0, max = #telemetryProtocols, table = telemetryProtocols },
         led_color = { min = 0, max = #ledColors, table = ledColors },
-        unknown3 = nil,
+        led_rgb = nil,
         motor_temp_sensor = { min = 0, max = #statusOptions, table = statusOptions},
-        motor_temp = { min = 50, max = 155, unit = rf2.units.celsius },
-        capacity_cutoff = { min = 0, max = 10000, mult = 100 }
+        motor_temp = { min = 50, max = 150, unit = rf2.units.celsius },
+        capacity_cutoff = { min = 0, max = 50000, mult = 100 }
     }
 end
 
@@ -73,7 +77,7 @@ local function getEscParameters(callback, callbackParam, data)
             end
             data.esc_signature = signature
             data.command = rf2.mspHelper.readU8(buf)
-            data.unknown1 = rf2.mspHelper.readU8(buf)
+            data.type = rf2.mspHelper.readU8(buf)
             data.amperage = getUInt(buf, 2)
             data.serial_number1 = getUInt(buf, 4)
             data.serial_number2 = getUInt(buf, 4)
@@ -84,7 +88,8 @@ local function getEscParameters(callback, callbackParam, data)
             data.fw_minor = rf2.mspHelper.readU8(buf)
             data.fw_patch = rf2.mspHelper.readU8(buf)
             data.hw_version = rf2.mspHelper.readU8(buf)
-            data.unknown2 = getUInt(buf, 4)
+            data.thr_min = getUInt(buf, 2)
+            data.thr_max = getUInt(buf, 2)
             data.esc_mode.value = rf2.mspHelper.readU8(buf)
             data.cell_count.value = rf2.mspHelper.readU8(buf)
             data.low_voltage.value = rf2.mspHelper.readU8(buf)
@@ -98,32 +103,36 @@ local function getEscParameters(callback, callbackParam, data)
             data.current_gain.value = rf2.mspHelper.readU8(buf) - 20
             data.fan_control.value = rf2.mspHelper.readU8(buf)
             data.soft_start.value = rf2.mspHelper.readU8(buf)
-            data.p_gain.value = getUInt(buf, 2)
-            data.i_gain.value = getUInt(buf, 2)
-            data.d_gain.value = getUInt(buf, 2)
+            data.auto_restart_time.value = rf2.mspHelper.readU8(buf)
+            data.restart_acc.value = rf2.mspHelper.readU8(buf)
+            data.p_gain.value = rf2.mspHelper.readU8(buf)
+            data.i_gain.value = rf2.mspHelper.readU8(buf)
+            data.active_freewheel.value = rf2.mspHelper.readU8(buf)
+            data.drive_freq.value = rf2.mspHelper.readU8(buf)
             data.max_motor_erpm.value = getUInt(buf, 3)
             data.throttle_protocol.value = rf2.mspHelper.readU8(buf)
             data.telemetry_protocol.value = rf2.mspHelper.readU8(buf)
             data.led_color.value = rf2.mspHelper.readU8(buf)
-            data.unknown3 = getUInt(buf, 3)
+            data.led_rgb = getUInt(buf, 3)
             data.motor_temp_sensor.value = rf2.mspHelper.readU8(buf)
             data.motor_temp.value = rf2.mspHelper.readU8(buf)
             data.capacity_cutoff.value = getUInt(buf, 2)
             callback(callbackParam, data)
         end,
-        simulatorResponse = { 115, 0, 0, 1, 24,  231, 79, 190, 216, 78, 29, 169, 244, 1, 0, 0, 1, 0, 2, 0, 4, 76, 7, 148, 0, 6, 30, 125, 1, 0, 0, 3, 15, 1, 20, 0, 10, 0, 45, 0, 35, 0, 10, 0, 150, 0, 0, 0, 3, 0, 0, 0, 0, 100, 0, 0 },
+        simulatorResponse = { 115, 0, 1, 0, 155,  231, 79, 190, 216, 78, 29, 169, 244, 1, 0, 0, 1, 0, 2, 0, 4, 76, 7, 148, 0, 6, 30, 125, 1, 0, 0, 3, 15, 1, 20, 0, 10, 30, 5, 45, 35, 1, 16, 1, 251, 208, 0, 0, 3, 0, 0, 0, 0, 100, 0, 0 },
         --[[
         simulatorResponse = {
             115, -- signature
             0, -- command
-            0, -- unknown1
+            1, -- type
             1, 24, -- amperage
             231, 79, 190, 216, -- serial number1
             78, 29, 169, 244, -- serial number2
             1, 0, 0, -- IAP
             1, 0, 2, -- firmware version
             0, -- hw version 18
-            4, 76, 7, 148, -- unknown2
+            4, 76, -- thr_min
+            7, 148, -- thr_max
             0, -- esc mode
             6, -- cell count
             30, -- low voltage
@@ -137,14 +146,17 @@ local function getEscParameters(callback, callbackParam, data)
             20, -- current gain 33
             0, -- fan control
             10, -- soft start
-            0, 45, -- p-gain
-            0, 35, -- i-gain
-            0, 10, -- d-gain
-            0, 150, 0 -- max motor erpm
+            30, -- auto restart time
+            5, -- restart acc
+            45, -- p-gain
+            35, -- i-gain
+            1, -- active freewheeling
+            16, -- drive-freq
+            1, 251, 208 -- max motor erpm
             0, -- throttle protocol
             0, -- telemetry protocol
-            3, -- led color
-            0, 0, 0, -- unknown3
+            3, -- led color index
+            0, 0, 0, -- led color value
             0, -- motor temp sensor
             100, -- motor temperature
             0, 0, -- capacity cutoff
@@ -167,7 +179,7 @@ local function setEscParameters(data)
     }
     rf2.mspHelper.writeU8(message.payload, data.esc_signature)
     rf2.mspHelper.writeU8(message.payload, data.command)
-    rf2.mspHelper.writeU8(message.payload, data.unknown1)
+    rf2.mspHelper.writeU8(message.payload, data.type)
     setUInt(message.payload, data.amperage, 2)
     setUInt(message.payload, data.serial_number1, 4)
     setUInt(message.payload, data.serial_number2, 4)
@@ -178,7 +190,8 @@ local function setEscParameters(data)
     rf2.mspHelper.writeU8(message.payload, data.fw_minor)
     rf2.mspHelper.writeU8(message.payload, data.fw_patch)
     rf2.mspHelper.writeU8(message.payload, data.hw_version)
-    setUInt(message.payload, data.unknown2, 4)
+    setUInt(message.payload, data.thr_min, 2)
+    setUInt(message.payload, data.thr_max, 2)
     rf2.mspHelper.writeU8(message.payload, data.esc_mode.value)
     rf2.mspHelper.writeU8(message.payload, data.cell_count.value)
     rf2.mspHelper.writeU8(message.payload, data.low_voltage.value)
@@ -192,14 +205,17 @@ local function setEscParameters(data)
     rf2.mspHelper.writeU8(message.payload, data.current_gain.value + 20)
     rf2.mspHelper.writeU8(message.payload, data.fan_control.value)
     rf2.mspHelper.writeU8(message.payload, data.soft_start.value)
-    setUInt(message.payload, data.p_gain.value, 2)
-    setUInt(message.payload, data.i_gain.value, 2)
-    setUInt(message.payload, data.d_gain.value, 2)
+    rf2.mspHelper.writeU8(message.payload, data.auto_restart_time.value)
+    rf2.mspHelper.writeU8(message.payload, data.restart_acc.value)
+    rf2.mspHelper.writeU8(message.payload, data.p_gain.value)
+    rf2.mspHelper.writeU8(message.payload, data.i_gain.value)
+    rf2.mspHelper.writeU8(message.payload, data.active_freewheel.value)
+    rf2.mspHelper.writeU8(message.payload, data.drive_freq.value)
     setUInt(message.payload, data.max_motor_erpm.value, 3)
     rf2.mspHelper.writeU8(message.payload, data.throttle_protocol.value)
     rf2.mspHelper.writeU8(message.payload, data.telemetry_protocol.value)
     rf2.mspHelper.writeU8(message.payload, data.led_color.value)
-    setUInt(message.payload, data.unknown3, 3)
+    setUInt(message.payload, data.led_rgb, 3)
     rf2.mspHelper.writeU8(message.payload, data.motor_temp_sensor.value)
     rf2.mspHelper.writeU8(message.payload, data.motor_temp.value)
     setUInt(message.payload, data.capacity_cutoff.value, 2)

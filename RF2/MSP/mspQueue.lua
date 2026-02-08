@@ -2,6 +2,8 @@
 local MspQueueController = {}
 MspQueueController.__index = MspQueueController
 
+local mspSendRequest, mspProcessTxQ, mspPollReply, mspClearTxBuf = rf2.executeScript("MSP/common")
+
 function MspQueueController.new()
     local self = setmetatable({}, MspQueueController)
     self.messageQueue = {}
@@ -16,8 +18,8 @@ function MspQueueController:isProcessed()
     return not self.currentMessage and #self.messageQueue == 0
 end
 
---[[
-function joinTableItems(table, delimiter)
+--[NIR
+local function joinTableItems(table, delimiter)
     if table == nil or #table == 0 then return "" end
     delimiter = delimiter or ""
     local result = table[1]
@@ -58,17 +60,18 @@ function MspQueueController:processQueue()
         if not self.lastTimeCommandSent or (self.lastTimeCommandSent + retryDelay < rf2.clock()) then
             if self.currentMessage.payload then
                 --rf2.print("Sending  cmd "..self.currentMessage.command..": {" .. joinTableItems(self.currentMessage.payload, ", ") .. "}")
-                rf2.protocol.mspWrite(self.currentMessage.command, self.currentMessage.payload)
+                mspSendRequest(self.currentMessage.command, self.currentMessage.payload)
             else
                 --rf2.print("Sending  cmd "..self.currentMessage.command)
-                rf2.protocol.mspWrite(self.currentMessage.command, {})
+                mspSendRequest(self.currentMessage.command, {})
             end
             self.lastTimeCommandSent = rf2.clock()
             self.retryCount = self.retryCount + 1
         end
 
-        rf2.mspCommon.mspProcessTxQ()
-        cmd, buf, err = rf2.mspCommon.mspPollReply()
+        mspProcessTxQ()
+        cmd, buf, err = mspPollReply()
+    --[NIR
     else
         --rf2.print("Sending  cmd "..self.currentMessage.command..": {" .. joinTableItems(self.currentMessage.payload, ", ") .. "}")
         if not self.currentMessage.simulatorResponse then
@@ -82,6 +85,7 @@ function MspQueueController:processQueue()
         cmd = self.currentMessage.command
         buf = self.currentMessage.simulatorResponse
         err = nil
+    --]]
     end
 
     --if cmd then
@@ -92,8 +96,8 @@ function MspQueueController:processQueue()
     --end
 
     --if cmd == 217 then   -- MSP_ESC_PARAMETERS
-    --  buf = self.currentMessage.simulatorResponse
-    --  err = nil
+    --     buf = self.currentMessage.simulatorResponse
+    --     err = nil
     --end
 
     if (cmd == self.currentMessage.command and not err) or (self.currentMessage.command == 68 and self.retryCount == 2) then -- 68 = MSP_REBOOT
@@ -125,7 +129,7 @@ function MspQueueController:clear()
     self.messageQueue = {}
     self.currentMessage = nil
     self.lastTimeCommandSent = nil
-    rf2.mspCommon.mspClearTxBuf()
+    mspClearTxBuf()
     collectgarbage()
 end
 
