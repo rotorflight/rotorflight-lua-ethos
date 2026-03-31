@@ -294,6 +294,7 @@ local function create()
 end
 
 local function exit()
+    if Page and Page.unload then Page:unload() end
     uiState = uiStatus.init
     prevUiState = nil
     lastEvent = nil
@@ -369,6 +370,7 @@ local function processEvent()
                 rf2.print("Popup from page")
                 createPopupMenu()
             elseif lastEvent == EVT_VIRTUAL_EXIT then
+                if Page and Page.unload then Page:unload() end
                 invalidatePages()
                 currentField = 1
                 uiState = uiStatus.mainMenu

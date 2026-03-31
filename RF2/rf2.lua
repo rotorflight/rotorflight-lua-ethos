@@ -1,6 +1,6 @@
 -- All RF2 globals should be stored in the rf2 table, to avoid conflict with globals from other scripts.
 rf2 = {
-    luaVersion = "2.3.0-20260208",
+    luaVersion = "2.3.0-RC1",
     baseDir = "./",
     runningInSimulator = system:getVersion().simulation,
 
@@ -96,10 +96,11 @@ rf2 = {
         herz = " Hz",
         seconds = " s",
         milliseconds = " ms",
-        volt = "V",
+        volt = " V",
         celsius = " C",
         rpm = " RPM",
-        meters = " m"
+        meters = " m",
+        mah = " mAh"
     },
 
     print = function(format, ...)
@@ -128,5 +129,14 @@ rf2 = {
         --return 784, 406
         --return 472, 288
         --return 472, 240
+    end,
+    
+    call = function(func, ...)
+        -- Use unprotected calls during development, so errors surface immediately.
+        func(...)
+
+        -- Or use protected calls and show any errors afterwards.
+        -- local status, err = pcall(func, ...)
+        -- if not status then rf2.print(err) end
     end
 }

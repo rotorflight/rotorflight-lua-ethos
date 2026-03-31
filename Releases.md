@@ -1,32 +1,35 @@
-# 2.3.0-20260208
+# 2.3.0-RC1
 
-This is a *development snapshot* of the Rotorflight 2.3.0 Lua Scripts for FrSky Ethos.
+This is the *First Release Candidate* of the *Rotorflight 2.3.0 Lua Scripts for FrSky Ethos*.
+
+NOTE: The final 2.3.0 version will be released after a few release candidates. Please don't use RCs once the final release is out.
 
 ## Downloads
 
 The download locations are:
 
-- [Rotorflight Configurator](https://github.com/rotorflight/rotorflight-configurator/releases/tag/snapshot/2.3.0-20260208)
-- [Rotorflight Blackbox](https://github.com/rotorflight/rotorflight-blackbox/releases/tag/snapshot/2.3.0-20260208)
-- [Lua Scripts for EdgeTX and OpenTX](https://github.com/rotorflight/rotorflight-lua-scripts/releases/tag/snapshot/2.3.0-20260208)
-- [Lua Scripts for FrSky Ethos](https://github.com/rotorflight/rotorflight-lua-ethos/releases/tag/snapshot/2.3.0-202602081)
-- [Lua Suite for FrSky Ethos](https://github.com/rotorflight/rotorflight-lua-ethos-suite/releases/tag/snapshot/2.3.0-20260208)
+- [Rotorflight Configurator](https://github.com/rotorflight/rotorflight-configurator/releases/tag/release/2.3.0-RC1)
+- [Rotorflight Blackbox](https://github.com/rotorflight/rotorflight-blackbox/releases/tag/release/2.3.0-RC1)
+- [Lua Scripts for EdgeTX and OpenTX](https://github.com/rotorflight/rotorflight-lua-scripts/releases/tag/release/2.3.0-RC1)
+- [Lua Scripts for FrSky Ethos](https://github.com/rotorflight/rotorflight-lua-ethos/releases/tag/release/2.3.0-RC1)
+- [Lua Suite for FrSky Ethos](https://github.com/rotorflight/rotorflight-lua-ethos-suite/releases/tag/release/2.3.0-RC1)
 
 ## Notes
 
-This version is intended for beta testing only. It may contain incomplete features or stability issues and is not recommended for end-user use.
-
-For more information, please join the Rotorflight Discord chat.
+Rotorflight setup instructions can be found on the Rotorflight website [www.rotorflight.org](https://www.rotorflight.org/).
 
 ## Changes Since Version 2.2.1
 
-- *Rates* page: added Rotorflight rates
-- *Hobbywing V5 ESC* page: better support for setting BEC voltage
-- *Model* page: added support for per model statistics like *Total flights* and *Total time*
-- Added support for the new Rotorflight governor
-- Updated FLYROTOR ESC parameters
-- Reduced memory usage
-- Various minor fixes
+- *Model* page: added support for per model statistics like *Total flights* and *Total time*.
+- *Battery* page: new page for configuring and specifying your batteries.
+- *Governor* page: added support for the new Rotorflight governor.
+- *Rates* page: added support for *Rotorflight* rates.
+- *Rate Dynamics* page: added support for *Cyclic ring* and *Polar coordinates*.
+- *AM32 ESC* page: new page for configuring AM32 ESCs.
+- *FLYROTOR ESC* page: updated parameters.
+- Added support for configuring *OMP* and *ZTW* ESCs.
+- Added partial support for the *FlySky PA01*.
+- Various minor fixes.
 
 
 

@@ -70,6 +70,7 @@ end
 if rf2.apiVersion >= 12.09 then
     incY(lineSpacing * 0.5)
     fields[#fields + 1] = { t = "Cyclic ring",         x = x,          y = incY(lineSpacing), sp = x + sp, data = rcTuning.cyclic_ring }
+    fields[#fields + 1] = { t = "Polar coordinates",   x = x,          y = incY(lineSpacing), sp = x + sp, data = rcTuning.cyclic_polar }
 end
 
 local function receivedRcTuning(page)
@@ -82,8 +83,10 @@ return {
         rf2.useApi("mspRcTuning").read(receivedRcTuning, self, rcTuning)
     end,
     write = function(self)
-        rf2.useApi("mspRcTuning").write(rcTuning)
-        rf2.settingsSaved(true, false)
+        if rcTuning.rates_type.value then
+            rf2.useApi("mspRcTuning").write(rcTuning)
+            rf2.settingsSaved(true, false)
+        end
     end,
     title       = "Rate Dynamics",
     labels      = labels,
