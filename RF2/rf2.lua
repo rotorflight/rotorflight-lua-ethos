@@ -88,6 +88,12 @@ rf2 = {
     clock = os.clock,
 
     apiVersion = nil,
+    mspProtocolVersion = 1,
+    mspV2MinApiVersion = "12.09",
+    mspNonBlocking = true,
+    mspPollSliceSeconds = 0.006,
+    mspPollSlicePolls = 4,
+    mspPollBudget = 0.07,
 
     units = {
         percentage = "%",
