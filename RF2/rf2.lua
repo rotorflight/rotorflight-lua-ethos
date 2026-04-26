@@ -1,6 +1,6 @@
 -- All RF2 globals should be stored in the rf2 table, to avoid conflict with globals from other scripts.
 rf2 = {
-    luaVersion = "2.3.0-RC1",
+    luaVersion = "2.3.0-RC2",
     baseDir = "./",
     runningInSimulator = system:getVersion().simulation,
 
@@ -69,8 +69,7 @@ rf2 = {
     end,
 
     executeScript = function(scriptName, ...)
-        collectgarbage()
-        return assert(rf2.loadScript(scriptName))(...)
+        return assert(rf2.loadScript(scriptName), scriptName)(...)
     end,
 
     useApi = function(apiName)
@@ -103,12 +102,25 @@ rf2 = {
         mah = " mAh"
     },
 
+    formatTime = function(cs)
+        local hours = math.floor(cs / 360000)
+        cs = cs % 360000
+
+        local minutes = math.floor(cs / 6000)
+        cs = cs % 6000
+
+        local seconds = math.floor(cs / 100)
+        local centis = math.floor(cs % 100)
+
+        return string.format("%02d:%02d:%02d:%02d", hours, minutes, seconds, centis)
+    end,
+
     print = function(format, ...)
-        local str = string.format("RF2: " .. format, ...)
+        local str = string.format("%s - RF2: " .. tostring(format), rf2.formatTime(os.clock() * 100), ...)
         if rf2.runningInSimulator then
             print(str)
         else
-            --serialWrite(str .. "\r\n") -- 115200 bps
+            --print(str) -- Ethos outputs print to serial
             --rf2.log(str)
         end
     end,
@@ -133,10 +145,10 @@ rf2 = {
     
     call = function(func, ...)
         -- Use unprotected calls during development, so errors surface immediately.
-        func(...)
+        --func(...)
 
         -- Or use protected calls and show any errors afterwards.
-        -- local status, err = pcall(func, ...)
-        -- if not status then rf2.print(err) end
+        local status, err = pcall(func, ...)
+        if not status then rf2.print(err) end
     end
 }
