@@ -576,12 +576,12 @@ local function drawPage()
     for i=1,#Page.fields do
         local val = "---"
         local f = Page.fields[i]
-        if f.data and f.data.value ~= nil then
+        if f.data and f.data.value then
             val = f.data.value
             if type(val) == "number" then
                 val = val / (f.data.scale or 1)
             end
-            if type(f.data.table) == "table" and f.data.table[val] then
+            if f.data.table and f.data.table[val] then
                 val = f.data.table[val]
             end
         end
