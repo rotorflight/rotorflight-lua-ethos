@@ -1,6 +1,6 @@
 -- All RF2 globals should be stored in the rf2 table, to avoid conflict with globals from other scripts.
 rf2 = {
-    luaVersion = "2.3.0-RC3",
+    luaVersion = "2.3.0",
     baseDir = "./",
     runningInSimulator = system:getVersion().simulation,
 
@@ -99,7 +99,11 @@ rf2 = {
         celsius = " C",
         rpm = " RPM",
         meters = " m",
-        mah = " mAh"
+        mah = " mAh",
+        percentagePerSecond = " %/s",
+        millivoltsPerSecond = " mV/s",
+        khz = " kHz",
+        kv = " KV"
     },
 
     formatTime = function(cs)
